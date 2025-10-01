@@ -19,7 +19,7 @@ const updateTokenDisplay = (buttonElement, token) => {
     if (logoImg) {
         logoImg.src = token.logo;
         logoImg.alt = token.name;
-        logoImg.onerror = () => { logoImg.src = 'https://via.placeholder.com/48x48?text=' + token.name; };
+        logoImg.onerror = () => { logoImg.src = 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + token.name; };
     }
     if (nameSpan) nameSpan.textContent = token.name;
     console.log(`Updated token display for ${token.name}`);
