@@ -1,0 +1,13 @@
+{
+  "name": "wagydog-dapp",
+  "version": "1.0.0",
+  "description": "WagyDog NFT Marketplace & Meme Coin DApp on BNB Testnet",
+  "scripts": {
+    "start": "serve .",
+    "dev": "vite --open"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1",
+    "vite": "^5.0.0"
+  }
+}
