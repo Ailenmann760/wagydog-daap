@@ -1,19 +1,4 @@
-import { PROJECT_ID, CHAIN_CONFIG } from './config.js';
-
-let web3Modal;
-try {
-    if (typeof window.Web3Modal === 'undefined') {
-        throw new Error('Web3Modal script not loaded');
-    }
-    web3Modal = new window.Web3Modal.Standalone({
-        projectId: PROJECT_ID,
-        walletConnectVersion: 2,
-        chains: [CHAIN_CONFIG],
-    });
-    console.log('Web3Modal v2 Standalone initialized successfully');
-} catch (error) {
-    console.error('Failed to initialize Web3Modal:', error);
-}
+import { CHAIN_CONFIG } from './config.js';
 
 window.wagyDog = {
     provider: null,
@@ -58,48 +43,50 @@ export const updateUi = (address) => {
 };
 
 export const connectWallet = async () => {
-    if (!web3Modal) {
-        console.error('Web3Modal not available');
-        alert('Wallet connection not available. Ensure MetaMask/Trust is installed and page is HTTPS.');
+    if (typeof window.ethereum === 'undefined') {
+        alert('MetaMask or Trust Wallet not installed. Please install one.');
         return;
     }
     try {
         console.log('Attempting to connect wallet...');
-        // Ensure chain is added/switched (for MetaMask/others)
-        if (window.ethereum) {
-            try {
+        // Switch to BNB Testnet
+        try {
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: '0x61' }], // 97 in hex
+            });
+        } catch (switchError) {
+            if (switchError.code === 4902) {
                 await window.ethereum.request({
-                    method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x61' }], // BSC Testnet hex
+                    method: 'wallet_addEthereumChain',
+                    params: [CHAIN_CONFIG],
                 });
-            } catch (switchError) {
-                if (switchError.code === 4902) { // Chain not added
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [CHAIN_CONFIG],
-                    });
-                } else {
-                    throw switchError;
-                }
+            } else {
+                throw switchError;
             }
         }
-        const provider = await web3Modal.connect();
-        window.wagyDog.provider = new ethers.providers.Web3Provider(provider);
-        window.wagyDog.signer = window.wagyDog.provider.getSigner();
+        // Request accounts
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        if (accounts.length === 0) {
+            throw new Error('No accounts found');
+        }
+        window.wagyDog.provider = new ethers.BrowserProvider(window.ethereum);
+        window.wagyDog.signer = await window.wagyDog.provider.getSigner();
         window.wagyDog.address = await window.wagyDog.signer.getAddress();
         console.log("Wallet connected:", window.wagyDog.address);
         updateUi(window.wagyDog.address);
-        provider.on("accountsChanged", (accounts) => {
+        // Listeners
+        window.ethereum.on("accountsChanged", (accounts) => {
             if (accounts.length > 0) {
                 connectWallet();
             } else {
                 disconnectWallet();
             }
         });
-        provider.on("chainChanged", () => window.location.reload());
+        window.ethereum.on("chainChanged", () => window.location.reload());
     } catch (error) {
         console.error("Could not connect to wallet:", error);
-        alert(`Connection failed: ${error.message}. Try refreshing or checking wallet extension.`);
+        alert(`Connection failed: ${error.message}. Make sure MetaMask is unlocked.`);
         disconnectWallet();
     }
 };
@@ -109,6 +96,5 @@ export const disconnectWallet = () => {
     window.wagyDog.signer = null;
     window.wagyDog.address = null;
     console.log("Wallet disconnected.");
-    if (web3Modal) web3Modal.clearCachedProvider();
     updateUi(null);
 };
