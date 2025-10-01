@@ -2,15 +2,15 @@ import { PROJECT_ID, CHAIN_CONFIG } from './config.js';
 
 let web3Modal;
 try {
-    if (typeof Web3Modal === 'undefined') {
+    if (typeof window.Web3Modal === 'undefined') {
         throw new Error('Web3Modal script not loaded');
     }
-    web3Modal = new Web3Modal({
+    web3Modal = new window.Web3Modal.Standalone({
         projectId: PROJECT_ID,
         walletConnectVersion: 2,
         chains: [CHAIN_CONFIG],
     });
-    console.log('Web3Modal initialized successfully');
+    console.log('Web3Modal v2 Standalone initialized successfully');
 } catch (error) {
     console.error('Failed to initialize Web3Modal:', error);
 }
@@ -83,9 +83,9 @@ export const connectWallet = async () => {
                 }
             }
         }
-        const provider = await web3Modal.open();
-        window.wagyDog.provider = new ethers.BrowserProvider(provider);
-        window.wagyDog.signer = await window.wagyDog.provider.getSigner();
+        const provider = await web3Modal.connect();
+        window.wagyDog.provider = new ethers.providers.Web3Provider(provider);
+        window.wagyDog.signer = window.wagyDog.provider.getSigner();
         window.wagyDog.address = await window.wagyDog.signer.getAddress();
         console.log("Wallet connected:", window.wagyDog.address);
         updateUi(window.wagyDog.address);
@@ -109,6 +109,6 @@ export const disconnectWallet = () => {
     window.wagyDog.signer = null;
     window.wagyDog.address = null;
     console.log("Wallet disconnected.");
-    if (web3Modal) web3Modal.closeModal?.(); // Safe close
+    if (web3Modal) web3Modal.clearCachedProvider();
     updateUi(null);
 };
