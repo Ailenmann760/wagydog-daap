@@ -2,7 +2,10 @@ import { PROJECT_ID, CHAIN_CONFIG } from './config.js';
 
 let web3Modal;
 try {
-    web3Modal = new window.Web3Modal.default({
+    if (typeof Web3Modal === 'undefined') {
+        throw new Error('Web3Modal script not loaded');
+    }
+    web3Modal = new Web3Modal({
         projectId: PROJECT_ID,
         walletConnectVersion: 2,
         chains: [CHAIN_CONFIG],
@@ -57,20 +60,20 @@ export const updateUi = (address) => {
 export const connectWallet = async () => {
     if (!web3Modal) {
         console.error('Web3Modal not available');
-        alert('Wallet connection not available. Check console.');
+        alert('Wallet connection not available. Ensure MetaMask/Trust is installed and page is HTTPS.');
         return;
     }
     try {
         console.log('Attempting to connect wallet...');
-        // Ensure chain is added/switched
+        // Ensure chain is added/switched (for MetaMask/others)
         if (window.ethereum) {
             try {
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: '0x61' }], // 97 in hex
+                    params: [{ chainId: '0x61' }], // BSC Testnet hex
                 });
             } catch (switchError) {
-                if (switchError.code === 4902) {
+                if (switchError.code === 4902) { // Chain not added
                     await window.ethereum.request({
                         method: 'wallet_addEthereumChain',
                         params: [CHAIN_CONFIG],
@@ -80,7 +83,7 @@ export const connectWallet = async () => {
                 }
             }
         }
-        const provider = await web3Modal.openModal();
+        const provider = await web3Modal.open();
         window.wagyDog.provider = new ethers.BrowserProvider(provider);
         window.wagyDog.signer = await window.wagyDog.provider.getSigner();
         window.wagyDog.address = await window.wagyDog.signer.getAddress();
@@ -96,7 +99,7 @@ export const connectWallet = async () => {
         provider.on("chainChanged", () => window.location.reload());
     } catch (error) {
         console.error("Could not connect to wallet:", error);
-        alert(`Connection failed: ${error.message}`);
+        alert(`Connection failed: ${error.message}. Try refreshing or checking wallet extension.`);
         disconnectWallet();
     }
 };
@@ -106,6 +109,6 @@ export const disconnectWallet = () => {
     window.wagyDog.signer = null;
     window.wagyDog.address = null;
     console.log("Wallet disconnected.");
-    if (web3Modal) web3Modal.closeModal();
+    if (web3Modal) web3Modal.closeModal?.(); // Safe close
     updateUi(null);
 };
