@@ -1,5 +1,3 @@
-import { createStarfield } from './utils-internal.js'; // Internal for starfield
-
 // Export starfield creator
 export const initStarfields = () => {
     createStarfield('starfield');
