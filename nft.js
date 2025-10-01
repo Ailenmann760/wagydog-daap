@@ -12,7 +12,7 @@ const dummyNfts = [
 
 const createNftCard = (nft) => `
     <div class="nft-card">
-        <img src="${nft.image}" alt="${nft.name}" class="nft-card-image" onerror="this.src='https://via.placeholder.com/250x250?text=NFT+${nft.id}'">
+        <img src="${nft.image}" alt="${nft.name}" class="nft-card-image" onerror="this.src='https://placehold.co/250x250/0d1117/FFFFFF?text=NFT+${nft.id}'">
         <div class="nft-card-content">
             <h4 class="nft-card-title">${nft.name} #${nft.id}</h4>
             <p class="nft-card-artist">by ${nft.artist}</p>
