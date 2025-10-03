@@ -72,5 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Upload/Mint listener
+    const uploadMintBtn = document.getElementById('upload-mint-btn');
+    if (uploadMintBtn) {
+        uploadMintBtn.addEventListener('click', uploadAndMintNFT);
+    }
+
     console.log('DApp fully initialized');
 });
+
+// Global functions for marketplace (from nft.js)
+window.uploadAndMintNFT = uploadAndMintNFT;
+window.listNFT = listNFT;
+window.buyNFT = buyNFT;
