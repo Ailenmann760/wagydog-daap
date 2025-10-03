@@ -34,7 +34,7 @@ export const updateUi = async (address) => {
         if (connectionPrompt) connectionPrompt.classList.add('hidden');
         if (mintBtn) mintBtn.disabled = false;
 
-        // Fetch and display BNB balance
+        // Fetch BNB balance
         if (window.wagyDog.provider) {
             try {
                 const balance = await window.wagyDog.provider.getBalance(address);
@@ -66,7 +66,7 @@ export const connectWallet = async () => {
         try {
             await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0x61' }], // 97 hex
+                params: [{ chainId: '0x61' }],
             });
         } catch (switchError) {
             if (switchError.code === 4902) {
