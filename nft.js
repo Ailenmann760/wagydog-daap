@@ -71,7 +71,7 @@ async function uploadAndMintNFT() {
     }
     try {
         uploadMintBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Creating...';
-        // Upload image to IPFS
+        // Upload image
         const imageAdded = await ipfs.add(fileInput.files[0]);
         const imageUri = `https://ipfs.io/ipfs/${imageAdded.cid.toString()}`;
         // Metadata
@@ -89,13 +89,14 @@ async function uploadAndMintNFT() {
             throw new Error('Insufficient BNB for mint');
         }
         // Mint with URI
-        const tx = await contract.safeMint(address, tokenUri, { value: mintPrice });
+        const tx = await contract.safeMint(address, tokenUri, { value: mintPrice, gasLimit: 300000 });
         const receipt = await tx.wait();
         if (initialPrice) {
-            const listTx = await contract.listNFT(tokenId, ethers.parseEther(initialPrice));
+            const listTx = await contract.listNFT(tokenId, ethers.parseEther(initialPrice), { gasLimit: 200000 });
             await listTx.wait();
         }
         alert('NFT created and minted!');
+        // Reset form
         document.getElementById('nft-name').value = '';
         document.getElementById('nft-desc').value = '';
         document.getElementById('nft-price').value = '';
@@ -117,7 +118,7 @@ window.listNFT = async (tokenId) => {
     if (!price) return;
     try {
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-        const tx = await contract.listNFT(tokenId, ethers.parseEther(price));
+        const tx = await contract.listNFT(tokenId, ethers.parseEther(price), { gasLimit: 200000 });
         await tx.wait();
         alert('NFT listed!');
         renderNfts();
@@ -132,7 +133,7 @@ window.buyNFT = async (tokenId) => {
     try {
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         const price = await contract.getListingPrice(tokenId);
-        const tx = await contract.buyNFT(tokenId, { value: price });
+        const tx = await contract.buyNFT(tokenId, { value: price, gasLimit: 300000 });
         await tx.wait();
         alert('NFT bought!');
         renderNfts();
@@ -157,10 +158,8 @@ export const mintNFT = async () => {
         }
         mintBtn.disabled = true;
         mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
-        const currentSupply = await contract.totalSupply();
-        const tokenId = currentSupply + 1n;
         const defaultUri = 'https://placehold.co/250x250/0d1117/FFFFFF?text=WagyDog';
-        const tx = await contract.safeMint(address, defaultUri, { value: mintPrice });
+        const tx = await contract.mint(address, { value: mintPrice, gasLimit: 300000 });
         await tx.wait();
         alert('Mint successful! Check your wallet.');
         renderNfts();
