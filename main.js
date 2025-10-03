@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('DApp fully initialized');
 });
 
-// Global functions for marketplace (from nft.js)
+// Global functions for marketplace
 window.uploadAndMintNFT = uploadAndMintNFT;
 window.listNFT = listNFT;
 window.buyNFT = buyNFT;
