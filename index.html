@@ -4,21 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WagyDog - NFT Marketplace & Meme Coin</title>
-    <link rel="icon" type="image/jpeg" href="https://placehold.co/32x32/3B82F6/FFFFFF?text=WD">
+    <link rel="icon" type="image/png" href="wagydog-logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="style.css">
-    <!-- Required for Web3 -->
+    <!-- IPFS Upload -->
+    <script src="https://unpkg.com/ipfs-http-client@60.0.0/dist/index.min.js"></script>
+    <!-- Ethers -->
     <script src="https://unpkg.com/ethers@6.13.2/dist/ethers.umd.min.js"></script>
 </head>
 <body class="relative">
     <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md shadow-sm">
         <div class="container mx-auto px-6 py-3 flex justify-between items-center">
             <a href="#home" class="flex items-center space-x-3">
-                <img src="https://placehold.co/48x48/3B82F6/FFFFFF?text=WD" alt="WagyDog Logo" class="h-12 w-auto" onerror="this.src='https://placehold.co/48x48/3B82F6/FFFFFF?text=WD'">
+                <img src="wagydog-logo.png" alt="WagyDog Logo" class="h-12 w-auto" onerror="this.src='https://placehold.co/48x48/3B82F6/FFFFFF?text=WD'">
                 <span class="text-2xl font-black text-gray-800 hidden sm:inline">WagyDog</span>
             </a>
             <nav class="hidden md:flex items-center space-x-8">
@@ -79,10 +81,18 @@
                 <h2 class="text-3xl font-bold text-white mb-6">NFT Marketplace</h2>
                 <div id="wallet-connection-info" class="mb-4 text-white">Please connect your wallet to view your NFTs.</div>
                 <div id="wallet-connected-info" class="mb-4 text-white hidden">
-                    Connected: <span id="wallet-address"></span>
+                    Connected: <span id="wallet-address"></span> | Balance: <span id="wallet-balance">0</span> BNB
                     <button id="disconnect-btn" class="btn-secondary ml-4">Disconnect</button>
                 </div>
                 <button id="dashboard-connect-btn" class="btn-primary mb-4 hidden">Connect Wallet</button>
+                <!-- Upload Artwork Form -->
+                <div class="control-card mb-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Upload Artwork</h3>
+                    <input type="file" id="artwork-upload" accept="image/*" class="mb-2">
+                    <input type="text" id="nft-name" placeholder="NFT Name" class="mb-2 p-2 rounded">
+                    <input type="text" id="nft-desc" placeholder="Description" class="mb-2 p-2 rounded">
+                    <button id="upload-mint-btn" class="btn-primary">Upload & Mint NFT</button>
+                </div>
                 <button id="mint-nft-btn" class="btn-primary mb-4" disabled><i class="fas fa-star mr-2"></i> Mint Now</button>
                 <div id="nft-gallery" class="dashboard-gallery"></div>
             </div>
@@ -124,7 +134,8 @@
                     <div class="swap-info-container">
                         <p>1 BNB = 1,500,000 WAGY (Estimated)</p>
                     </div>
-                    <button id="swap-action-btn" class="btn-primary mt-4 w-full">Connect Wallet</button>
+                    <button id="swap-action-btn" class="btn-primary mt-4 w-full">Connect Wallet to Swap</button>
+                    <div id="swap-status" class="mt-2 text-center hidden"></div>
                 </div>
             </div>
         </section>
@@ -157,4 +168,4 @@
     <script type="module" src="swap.js"></script>
     <script type="module" src="main.js"></script>
 </body>
-</html>
+                    </html>
