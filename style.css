@@ -327,6 +327,27 @@ body {
     text-align: center;
 }
 
+/* Upload Form Additions */
+.control-card input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.control-card input::placeholder {
+    color: #9CA3AF;
+}
+
+/* Status Messages */
+#swap-status {
+    color: #10B981;
+    font-weight: 600;
+}
+
 /* Ensure buttons are clickable */
 #header-connect-btn, #mobile-connect-btn, #swap-action-btn {
     pointer-events: auto !important;
@@ -338,4 +359,4 @@ body {
 }
 #starfield, #starfield2 {
     z-index: 0;
-}
+    }
