@@ -1,10 +1,8 @@
-// Export starfield creator
 export const initStarfields = () => {
     createStarfield('starfield');
     createStarfield('starfield2');
 };
 
-// Internal starfield function (modularized from bundle)
 function createStarfield(canvasId) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) {
@@ -49,4 +47,4 @@ function createStarfield(canvasId) {
     resizeCanvas();
     animate();
     console.log(`Starfield ${canvasId} initialized`);
-}
+        }
