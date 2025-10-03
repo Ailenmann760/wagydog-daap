@@ -85,16 +85,24 @@
                     <button id="disconnect-btn" class="btn-secondary ml-4">Disconnect</button>
                 </div>
                 <button id="dashboard-connect-btn" class="btn-primary mb-4 hidden">Connect Wallet</button>
-                <!-- Upload Artwork Form -->
-                <div class="control-card mb-6">
-                    <h3 class="text-xl font-bold text-white mb-4">Upload Artwork</h3>
-                    <input type="file" id="artwork-upload" accept="image/*" class="mb-2">
-                    <input type="text" id="nft-name" placeholder="NFT Name" class="mb-2 p-2 rounded">
-                    <input type="text" id="nft-desc" placeholder="Description" class="mb-2 p-2 rounded">
-                    <button id="upload-mint-btn" class="btn-primary">Upload & Mint NFT</button>
+                <!-- OpenSea-Style Upload Form -->
+                <div class="control-card mb-6 p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Create New NFT</h3>
+                    <div class="upload-area border-2 border-dashed border-gray-400 rounded-lg p-8 text-center mb-4" onclick="document.getElementById('artwork-upload').click()">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+                        <p class="text-gray-300">Drag & drop or click to upload image</p>
+                        <input type="file" id="artwork-upload" accept="image/*" class="hidden">
+                        <div id="preview" class="mt-4 hidden">
+                            <img id="preview-img" class="max-w-xs mx-auto rounded">
+                        </div>
+                    </div>
+                    <input type="text" id="nft-name" placeholder="Name (e.g., Cosmic Wagy #1)" class="mb-2 p-3 rounded-lg w-full bg-white/10 border border-white/20 text-white">
+                    <textarea id="nft-desc" placeholder="Description" class="mb-2 p-3 rounded-lg w-full bg-white/10 border border-white/20 text-white" rows="3"></textarea>
+                    <input type="text" id="nft-price" placeholder="Initial Price (BNB)" class="mb-4 p-3 rounded-lg w-full bg-white/10 border border-white/20 text-white">
+                    <button id="upload-mint-btn" class="btn-primary w-full">Create & Mint</button>
                 </div>
                 <button id="mint-nft-btn" class="btn-primary mb-4" disabled><i class="fas fa-star mr-2"></i> Mint Now</button>
-                <div id="nft-gallery" class="dashboard-gallery"></div>
+                <div id="nft-gallery" class="dashboard-gallery grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
             </div>
         </section>
         <section id="swap" class="py-20 px-6 fade-in-section">
@@ -110,9 +118,10 @@
                         </div>
                         <div class="token-input-body">
                             <input type="number" id="from-amount" class="token-amount-input" placeholder="0.0">
-                            <div id="from-token-select" class="token-select-btn">
+                            <div id="from-token-select" class="token-select-btn cursor-pointer">
                                 <img src="" alt="" class="token-logo">
                                 <span class="token-name"></span>
+                                <i class="fas fa-chevron-down ml-1"></i>
                             </div>
                         </div>
                     </div>
@@ -125,9 +134,10 @@
                         </div>
                         <div class="token-input-body">
                             <input type="number" id="to-amount" class="token-amount-input" placeholder="0.0">
-                            <div id="to-token-select" class="token-select-btn">
+                            <div id="to-token-select" class="token-select-btn cursor-pointer">
                                 <img src="" alt="" class="token-logo">
                                 <span class="token-name"></span>
+                                <i class="fas fa-chevron-down ml-1"></i>
                             </div>
                         </div>
                     </div>
@@ -139,6 +149,24 @@
                 </div>
             </div>
         </section>
+        <!-- Token Selector Modal -->
+        <div id="token-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h3 class="text-lg font-bold">Select Token</h3>
+                    <button id="close-token-modal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <input type="text" id="token-search" placeholder="Search name or paste address" class="w-full p-2 border rounded mb-4">
+                    <div id="token-list" class="max-h-64 overflow-y-auto space-y-2"></div>
+                    <div class="mt-4 p-2 bg-gray-100 rounded">
+                        <p class="text-sm text-gray-600">Popular: BNB, USDT, CAKE</p>
+                    </div>
+                </div>
+            </div>
+        </div>
         <section id="partners" class="py-20 px-6 bg-gray-100 fade-in-section">
             <div class="container mx-auto text-center">
                 <h2 class="text-3xl font-bold mb-6">Our Partners</h2>
@@ -168,4 +196,4 @@
     <script type="module" src="swap.js"></script>
     <script type="module" src="main.js"></script>
 </body>
-                    </html>
+                                                                           </html>
