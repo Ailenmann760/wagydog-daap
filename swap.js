@@ -9,7 +9,6 @@ const swapDirectionBtn = document.getElementById('swap-direction-btn');
 const swapActionButton = document.getElementById('swap-action-btn');
 const swapStatus = document.getElementById('swap-status');
 
-// Initial tokens
 let fromToken = { name: 'BNB', address: WBNB_ADDRESS, logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png', decimals: 18 };
 let toToken = { name: 'WAGY', address: WAGY_ADDRESS, logo: 'wagydog-logo.png', decimals: 18 };
 const BNB_TO_WAGY_RATE = 1500000;
@@ -71,33 +70,38 @@ export const performSwap = async () => {
         if (swapStatus) swapStatus.classList.remove('hidden');
         if (swapStatus) swapStatus.textContent = 'Executing swap...';
         const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
-        const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-        // Path: For BNB, use WBNB as first
+        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 min
         let path = [WBNB_ADDRESS, toToken.address];
         if (fromToken.name !== 'BNB') {
             path = [fromToken.address, WBNB_ADDRESS];
         }
+        const amountIn = fromToken.name === 'BNB' ? ethers.parseEther(fromAmount.toString()) : ethers.parseUnits(fromAmount.toString(), fromToken.decimals || 18);
+        // Get expected out with 0.5% slippage
+        const amountsOut = await router.getAmountsOut(amountIn, path);
+        const amountOutMin = amountsOut[amountsOut.length - 1] * 995n / 1000n; // 0.5% slippage
         let tx;
-        if (fromToken.name === 'BNB') { // BNB to Token
-            tx = await router.swapExactETHForTokens(0, path, signer.address, deadline, { value: ethers.parseEther(fromAmount.toString()) });
-        } else { // Token to BNB
+        if (fromToken.name === 'BNB') {
+            tx = await router.swapExactETHForTokens(amountOutMin, path, signer.address, deadline, { 
+                value: amountIn, 
+                gasLimit: 500000 
+            });
+        } else {
             const tokenContract = new ethers.Contract(fromToken.address, ERC20_ABI, signer);
-            const amountIn = ethers.parseUnits(fromAmount.toString(), fromToken.decimals || 18);
             const allowance = await tokenContract.allowance(signer.address, ROUTER_ADDRESS);
             if (allowance < amountIn) {
                 if (swapStatus) swapStatus.textContent = 'Approving tokens...';
-                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn);
+                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: 100000 });
                 await approveTx.wait();
             }
-            tx = await router.swapExactTokensForETH(amountIn, 0, path, signer.address, deadline);
+            tx = await router.swapExactTokensForETH(amountIn, amountOutMin, path, signer.address, deadline, { gasLimit: 500000 });
         }
-        await tx.wait();
-        if (swapStatus) swapStatus.textContent = 'Swap successful!';
-        alert('Swap complete!');
+        const receipt = await tx.wait();
+        if (swapStatus) swapStatus.textContent = 'Swap successful! Tx: ' + receipt.hash;
+        alert('Swap complete! Tx: ' + receipt.hash);
     } catch (error) {
         console.error('Swap failed:', error);
         if (swapStatus) swapStatus.textContent = 'Swap failed: ' + error.message;
-        alert(`Swap failed: ${error.message}`);
+        alert(`Swap failed: ${error.message}. Check path, funds, or slippage.`);
     } finally {
         swapActionButton.disabled = false;
         swapActionButton.innerHTML = 'Swap';
@@ -105,12 +109,12 @@ export const performSwap = async () => {
     }
 };
 
-// Token Selector Modal Logic
+// Token Selector Modal (unchanged from previous)
 const tokenModal = document.getElementById('token-modal');
 const closeTokenModal = document.getElementById('close-token-modal');
 const tokenSearch = document.getElementById('token-search');
 const tokenList = document.getElementById('token-list');
-let selectedModalType = null; // 'from' or 'to'
+let selectedModalType = null;
 
 const openTokenModal = (type) => {
     selectedModalType = type;
@@ -124,6 +128,7 @@ const closeModal = () => {
 };
 
 const fetchTokenByAddress = async (address) => {
+    if (!window.wagyDog.provider) return null;
     const contract = new ethers.Contract(address, ERC20_ABI, window.wagyDog.provider);
     try {
         const [name, symbol, decimals] = await Promise.all([
@@ -131,7 +136,7 @@ const fetchTokenByAddress = async (address) => {
             contract.symbol(),
             contract.decimals()
         ]);
-        return { name: name, symbol: symbol, address: address, decimals: decimals, logo: 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + symbol };
+        return { name: await name, symbol: await symbol, address, decimals: Number(await decimals), logo: 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + (await symbol) };
     } catch (error) {
         console.error('Invalid token address');
         return null;
@@ -140,7 +145,6 @@ const fetchTokenByAddress = async (address) => {
 
 const searchTokens = async (query) => {
     if (query.startsWith('0x') && query.length === 42) {
-        // Paste address
         const token = await fetchTokenByAddress(query);
         if (token) {
             tokenList.innerHTML = `<div class="token-item p-2 border rounded cursor-pointer" onclick="selectToken('${selectedModalType}', '${JSON.stringify(token).replace(/"/g, '&quot;')}')">
@@ -157,12 +161,10 @@ const searchTokens = async (query) => {
         }
         return;
     }
-    // Search name (mock popular BNB tokens; in prod, use DEX API)
     const popularTokens = [
         { name: 'Binance Coin', symbol: 'BNB', address: WBNB_ADDRESS, decimals: 18, logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' },
         { name: 'Tether', symbol: 'USDT', address: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd', decimals: 18, logo: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
         { name: 'PancakeSwap', symbol: 'CAKE', address: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', decimals: 18, logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png' },
-        // Add more
     ];
     const filtered = popularTokens.filter(t => t.name.toLowerCase().includes(query.toLowerCase()) || t.symbol.toLowerCase().includes(query.toLowerCase()));
     tokenList.innerHTML = filtered.map(t => `
@@ -175,7 +177,7 @@ const searchTokens = async (query) => {
                 </div>
             </div>
         </div>
-    `).join('');
+    `).join('') || '<p class="text-gray-500">No tokens found</p>';
 };
 
 window.selectToken = (type, tokenData) => {
@@ -194,7 +196,7 @@ tokenSearch.addEventListener('input', (e) => searchTokens(e.target.value));
 closeTokenModal.addEventListener('click', closeModal);
 tokenModal.addEventListener('click', (e) => { if (e.target === tokenModal) closeModal(); });
 
-// Attach to select buttons
+// Select button listeners
 fromTokenSelect.addEventListener('click', () => openTokenModal('from'));
 toTokenSelect.addEventListener('click', () => openTokenModal('to'));
 
