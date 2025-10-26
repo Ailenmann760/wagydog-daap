@@ -4,39 +4,95 @@ import { connectWallet } from './wallet.js';
 const mintBtn = document.getElementById('mint-nft-btn');
 const nftGallery = document.getElementById('nft-gallery');
 const uploadMintBtn = document.getElementById('upload-mint-btn');
+const filterSelect = document.getElementById('nft-filter');
+const refreshBtn = document.getElementById('refresh-nfts');
 
 // IPFS Client
 const { create } = window.IpfsHttpClient;
 const ipfs = create({ url: 'https://ipfs.infura.io:5001/api/v0' });
 
-const dummyNfts = [
-    { id: 1, name: 'Cosmic Wagy', artist: 'Galaxy Paws', price: '0.1', image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=600' },
-    { id: 2, name: 'Nebula Pup', artist: 'Starlight Studio', price: '0.25', image: 'https://images.pexels.com/photos/1665241/pexels-photo-1665241.jpeg?auto=compress&cs=tinysrgb&w=600' },
-    { id: 3, name: 'Star Chaser', artist: 'Andromeda Art', price: '0.5', image: 'https://images.pexels.com/photos/4587993/pexels-photo-4587993.jpeg?auto=compress&cs=tinysrgb&w=600' },
-];
+let cachedNfts = [];
 
-const createNftCard = (nft, isListed = false, price = 0) => `
-    <div class="nft-card border border-gray-300 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow bg-white">
-        <img src="${nft.image}" alt="${nft.name}" class="w-full h-64 object-cover">
+const createNftCard = (nft) => `
+    <div class="nft-card rounded-lg overflow-hidden hover:shadow-xl transition-shadow bg-white/5">
+        <img src="${nft.image}" alt="${nft.name}" class="w-full h-64 object-cover" onerror="this.src='https://placehold.co/400x400/0d1117/FFFFFF?text=NFT'">
         <div class="p-4">
-            <h4 class="text-lg font-bold">${nft.name} #${nft.id}</h4>
-            <p class="text-gray-600 text-sm">${nft.artist}</p>
+            <h4 class="text-lg font-bold text-white">${nft.name} #${nft.id}</h4>
+            <p class="text-gray-400 text-sm">${nft.ownerShort}</p>
             <div class="flex justify-between items-center mt-2">
-                <span class="text-gray-500 text-sm">Price</span>
-                <span class="font-bold text-blue-600">${isListed ? price + ' BNB' : 'Not Listed'}</span>
+                <span class="text-gray-400 text-sm">Status</span>
+                <span class="font-bold ${nft.listed ? 'text-green-400' : 'text-amber-300'}">${nft.listed ? `${nft.price} BNB` : 'Not Listed'}</span>
             </div>
-            ${isListed ? `<button class="btn-primary text-xs px-3 py-1 mt-2" onclick="buyNFT(${nft.id})">Buy</button>` : `<button class="btn-secondary text-xs px-3 py-1 mt-2" onclick="listNFT(${nft.id})">List for Sale</button>`}
+            ${nft.listed ? `<button class="btn-primary text-xs px-3 py-1 mt-2" onclick="buyNFT(${nft.id})">Buy</button>` : nft.isMine ? `<button class="btn-secondary text-xs px-3 py-1 mt-2" onclick="listNFT(${nft.id})">List for Sale</button>` : ''}
         </div>
     </div>
 `;
 
-export const renderNfts = () => {
-    if (nftGallery) {
-        nftGallery.innerHTML = dummyNfts.map(nft => createNftCard(nft)).join('');
-        console.log('NFT gallery populated with 3 dummies');
-    } else {
-        console.warn('NFT gallery element not found');
+const getReadProvider = () => {
+    const { provider } = window.wagyDog.getWalletState();
+    return provider || new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545');
+};
+
+const getContract = (signerOrProvider) => new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signerOrProvider || getReadProvider());
+
+async function fetchAllNfts() {
+    try {
+        const readProvider = getReadProvider();
+        const contract = getContract(readProvider);
+        const totalSupply = Number(await contract.totalSupply());
+        const { address } = window.wagyDog.getWalletState();
+        const items = [];
+        for (let tokenId = 1; tokenId <= totalSupply; tokenId++) {
+            try {
+                const [owner, uri] = await Promise.all([
+                    contract.ownerOf(tokenId),
+                    contract.tokenURI(tokenId)
+                ]);
+                let meta = { name: 'WagyDog', image: '', description: '' };
+                try {
+                    const res = await fetch(uri);
+                    meta = await res.json();
+                } catch (e) { /* ignore */ }
+                let priceWei = 0n;
+                try {
+                    priceWei = await contract.getListingPrice(tokenId);
+                } catch (e) { /* ignore */ }
+                const listed = priceWei && priceWei > 0n;
+                const item = {
+                    id: tokenId,
+                    name: meta.name || `WagyDog`,
+                    image: meta.image || 'https://placehold.co/400x400/0d1117/FFFFFF?text=WAGY',
+                    owner: owner,
+                    ownerShort: owner.slice(0, 6) + '...' + owner.slice(-4),
+                    listed,
+                    price: listed ? Number(ethers.formatEther(priceWei)).toString() : '0',
+                    isMine: address ? owner.toLowerCase() === address.toLowerCase() : false
+                };
+                items.push(item);
+            } catch (e) {
+                console.warn('NFT fetch failed for token', tokenId, e);
+            }
+        }
+        cachedNfts = items;
+        return items;
+    } catch (e) {
+        console.error('Failed loading NFTs', e);
+        return [];
     }
+}
+
+export const renderNfts = async () => {
+    if (!nftGallery) return;
+    nftGallery.innerHTML = '<div class="text-center text-gray-400">Loading NFTs...</div>';
+    if (cachedNfts.length === 0) await fetchAllNfts();
+    const filter = (filterSelect && filterSelect.value) || 'all';
+    const { address } = window.wagyDog.getWalletState();
+    const filtered = cachedNfts.filter(n => {
+        if (filter === 'listed') return n.listed;
+        if (filter === 'mine') return address && n.owner.toLowerCase() === address.toLowerCase();
+        return true;
+    });
+    nftGallery.innerHTML = filtered.map(nft => createNftCard(nft)).join('') || '<div class="text-center text-gray-400">No NFTs yet.</div>';
 };
 
 // OpenSea-Style Upload Preview
@@ -54,7 +110,7 @@ document.getElementById('artwork-upload').addEventListener('change', (e) => {
     }
 });
 
-async function uploadAndMintNFT() {
+export async function uploadAndMintNFT() {
     const { signer, address } = window.wagyDog.getWalletState();
     if (!signer || !address) {
         alert('Connect wallet first.');
@@ -102,7 +158,8 @@ async function uploadAndMintNFT() {
         document.getElementById('nft-price').value = '';
         document.getElementById('preview').classList.add('hidden');
         fileInput.value = '';
-        renderNfts();
+        cachedNfts = [];
+        await renderNfts();
     } catch (error) {
         console.error('Upload/Mint failed:', error);
         alert(`Failed: ${error.message}. Check funds/gas.`);
@@ -111,7 +168,7 @@ async function uploadAndMintNFT() {
     }
 }
 
-window.listNFT = async (tokenId) => {
+export async function listNFT(tokenId) {
     const { signer } = window.wagyDog.getWalletState();
     if (!signer) return alert('Connect wallet.');
     const price = prompt('List price in BNB:');
@@ -121,13 +178,14 @@ window.listNFT = async (tokenId) => {
         const tx = await contract.listNFT(tokenId, ethers.parseEther(price), { gasLimit: 200000 });
         await tx.wait();
         alert('NFT listed!');
-        renderNfts();
+        cachedNfts = [];
+        await renderNfts();
     } catch (error) {
         alert(`List failed: ${error.message}`);
     }
-};
+}
 
-window.buyNFT = async (tokenId) => {
+export async function buyNFT(tokenId) {
     const { signer } = window.wagyDog.getWalletState();
     if (!signer) return alert('Connect wallet.');
     try {
@@ -136,11 +194,12 @@ window.buyNFT = async (tokenId) => {
         const tx = await contract.buyNFT(tokenId, { value: price, gasLimit: 300000 });
         await tx.wait();
         alert('NFT bought!');
-        renderNfts();
+        cachedNfts = [];
+        await renderNfts();
     } catch (error) {
         alert(`Buy failed: ${error.message}`);
     }
-};
+}
 
 export const mintNFT = async () => {
     const { signer, address } = window.wagyDog.getWalletState();
@@ -158,11 +217,12 @@ export const mintNFT = async () => {
         }
         mintBtn.disabled = true;
         mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
-        const defaultUri = 'https://placehold.co/250x250/0d1117/FFFFFF?text=WagyDog';
-        const tx = await contract.mint(address, { value: mintPrice, gasLimit: 300000 });
+        const defaultUri = 'https://placehold.co/600x600/0d1117/FFFFFF?text=WagyDog';
+        const tx = await contract.safeMint(address, defaultUri, { value: mintPrice, gasLimit: 300000 });
         await tx.wait();
         alert('Mint successful! Check your wallet.');
-        renderNfts();
+        cachedNfts = [];
+        await renderNfts();
     } catch (error) {
         console.error("Minting failed:", error);
         alert(`Minting failed: ${error.message}. Check funds/gas.`);
@@ -175,3 +235,16 @@ export const mintNFT = async () => {
 if (mintBtn) {
     mintBtn.addEventListener('click', mintNFT);
 }
+
+// Filter and refresh
+if (filterSelect) {
+    filterSelect.addEventListener('change', async () => { await renderNfts(); });
+}
+if (refreshBtn) {
+    refreshBtn.addEventListener('click', async () => { cachedNfts = []; await renderNfts(); });
+}
+
+// Expose for inline onclick in cards
+window.listNFT = listNFT;
+window.buyNFT = buyNFT;
+window.uploadAndMintNFT = uploadAndMintNFT;

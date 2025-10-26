@@ -1,8 +1,8 @@
 /* === BASE STYLES === */
 body {
     font-family: 'Poppins', sans-serif;
-    background-color: #F8F9FD;
-    color: #1E293B;
+    background-color: #0b1020;
+    color: #E2E8F0;
     overflow-x: hidden;
 }
 
@@ -13,8 +13,8 @@ body {
 }
 
 .btn-primary {
-    background-color: #3B82F6;
-    color: white;
+    background: linear-gradient(90deg, #ff8a05, #ff3d81);
+    color: #fff;
     font-weight: 700;
     padding: 0.75rem 2rem;
     border-radius: 9999px;
@@ -23,8 +23,8 @@ body {
     transform: scale(1);
 }
 .btn-primary:hover {
-    box-shadow: 0 0 15px 0 rgb(59 130 246 / 0.5);
-    background-color: #2563EB;
+    box-shadow: 0 0 20px 0 rgba(255, 61, 129, 0.5);
+    filter: brightness(1.05);
     transform: scale(1.05);
 }
 .btn-primary:disabled {
@@ -35,8 +35,8 @@ body {
 }
 
 .btn-secondary {
-    background-color: #E5E7EB;
-    color: #1F2937;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #E2E8F0;
     font-weight: 700;
     padding: 0.75rem 2rem;
     border-radius: 9999px;
@@ -45,8 +45,8 @@ body {
     transform: scale(1);
 }
 .btn-secondary:hover {
-     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-     background-color: #D1D5DB;
+     box-shadow: 0 10px 20px -3px rgb(255 61 129 / 0.25);
+     background-color: rgba(255, 255, 255, 0.12);
      transform: scale(1.05);
 }
 
@@ -64,12 +64,12 @@ body {
 }
 
 .nav-link {
-    color: #374151;
+    color: #cbd5e1;
     font-weight: 600;
     transition: color 0.3s;
 }
 .nav-link:hover {
-    color: #3B82F6;
+    color: #ff8a05;
 }
 
 .social-icon {
@@ -94,11 +94,7 @@ body {
 }
 
 /* === SPACE THEME & ANIMATIONS === */
-.space-bg {
-    position: relative;
-    background-color: #0c0a18;
-    color: #e0e0e0;
-}
+.space-bg { position: relative; background: radial-gradient(1200px 600px at 20% 0%, #111936 0%, #0b1020 60%); color: #e0e0e0; }
 #starfield, #starfield2 {
     position: absolute;
     top: 0;

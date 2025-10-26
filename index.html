@@ -15,6 +15,8 @@
     <script src="https://unpkg.com/ipfs-http-client@60.0.0/dist/index.min.js"></script>
     <!-- Ethers -->
     <script src="https://unpkg.com/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <!-- WalletConnect v2 UMD -->
+    <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.11.1/dist/index.umd.js"></script>
 </head>
 <body class="relative">
     <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md shadow-sm">
@@ -101,7 +103,18 @@
                     <input type="text" id="nft-price" placeholder="Initial Price (BNB)" class="mb-4 p-3 rounded-lg w-full bg-white/10 border border-white/20 text-white">
                     <button id="upload-mint-btn" class="btn-primary w-full">Create & Mint</button>
                 </div>
-                <button id="mint-nft-btn" class="btn-primary mb-4" disabled><i class="fas fa-star mr-2"></i> Mint Now</button>
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                    <button id="mint-nft-btn" class="btn-primary" disabled><i class="fas fa-star mr-2"></i> Mint Now</button>
+                    <div class="flex items-center gap-2">
+                        <label for="nft-filter" class="text-white text-sm">Filter:</label>
+                        <select id="nft-filter" class="p-2 rounded bg-white/10 border border-white/20 text-white">
+                            <option value="all">All</option>
+                            <option value="listed">Listed</option>
+                            <option value="mine">My NFTs</option>
+                        </select>
+                        <button id="refresh-nfts" class="btn-secondary">Refresh</button>
+                    </div>
+                </div>
                 <div id="nft-gallery" class="dashboard-gallery grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
             </div>
         </section>

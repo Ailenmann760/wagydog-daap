@@ -1,4 +1,4 @@
-import { ROUTER_ADDRESS, ROUTER_ABI, ERC20_ABI, WAGY_ADDRESS, WBNB_ADDRESS } from './config.js';
+import { ROUTER_ADDRESS, ROUTER_ABI, ERC20_ABI, WAGY_ADDRESS, WBNB_ADDRESS, TOKENS } from './config.js';
 import { connectWallet } from './wallet.js';
 
 const fromAmountInput = document.getElementById('from-amount');
@@ -9,9 +9,8 @@ const swapDirectionBtn = document.getElementById('swap-direction-btn');
 const swapActionButton = document.getElementById('swap-action-btn');
 const swapStatus = document.getElementById('swap-status');
 
-let fromToken = { name: 'BNB', address: WBNB_ADDRESS, logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png', decimals: 18 };
-let toToken = { name: 'WAGY', address: WAGY_ADDRESS, logo: 'wagydog-logo.png', decimals: 18 };
-const BNB_TO_WAGY_RATE = 1500000;
+let fromToken = TOKENS[0];
+let toToken = TOKENS[1] || { name: 'Token', symbol: 'TKN', address: WBNB_ADDRESS, logo: 'https://placehold.co/48x48/0d1117/FFFFFF?text=TKN', decimals: 18 };
 
 const updateTokenDisplay = (buttonElement, token) => {
     if (!buttonElement) return;
@@ -37,18 +36,38 @@ const handleSwapDirection = () => {
     console.log('Swap direction toggled');
 };
 
-const handleAmountChange = (e) => {
+const quoteFromRouter = async (amountInFloat) => {
+    try {
+        const { provider } = window.wagyDog.getWalletState();
+        const readProvider = provider || new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545');
+        const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, readProvider);
+        const path = fromToken.address === WBNB_ADDRESS ? [WBNB_ADDRESS, toToken.address] : [fromToken.address, WBNB_ADDRESS, toToken.address];
+        const amountIn = ethers.parseUnits(amountInFloat.toString(), fromToken.decimals || 18);
+        const amounts = await router.getAmountsOut(amountIn, path);
+        const out = amounts[amounts.length - 1];
+        return ethers.formatUnits(out, toToken.decimals || 18);
+    } catch (e) {
+        console.warn('Quote failed', e);
+        return '';
+    }
+};
+
+const handleAmountChange = async (e) => {
     const inputAmount = parseFloat(e.target.value);
     if (isNaN(inputAmount) || inputAmount <= 0) {
         if (e.target.id === 'from-amount' && toAmountInput) toAmountInput.value = '';
         if (e.target.id === 'to-amount' && fromAmountInput) fromAmountInput.value = '';
         return;
     }
-    const rate = (fromToken.name === 'BNB') ? BNB_TO_WAGY_RATE : 1 / BNB_TO_WAGY_RATE;
     if (e.target.id === 'from-amount' && toAmountInput) {
-        toAmountInput.value = (inputAmount * rate).toFixed(6);
+        toAmountInput.value = '...';
+        const quoted = await quoteFromRouter(inputAmount);
+        toAmountInput.value = quoted ? Number(quoted).toFixed(6) : '';
     } else if (fromAmountInput) {
-        fromAmountInput.value = (inputAmount / rate).toFixed(6);
+        // reverse quote is approximate; request small binary search if needed; here keep simple
+        fromAmountInput.value = e.target.value;
+        const quoted = await quoteFromRouter(parseFloat(fromAmountInput.value || '0'));
+        if (quoted) toAmountInput.value = Number(quoted).toFixed(6);
     }
 };
 
@@ -69,23 +88,34 @@ export const performSwap = async () => {
         swapActionButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Swapping...';
         if (swapStatus) swapStatus.classList.remove('hidden');
         if (swapStatus) swapStatus.textContent = 'Executing swap...';
+        if (fromToken.address === toToken.address) {
+            alert('Select two different tokens.');
+            return;
+        }
         const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 min
-        let path = [WBNB_ADDRESS, toToken.address];
-        if (fromToken.name !== 'BNB') {
+        const isFromBNB = fromToken.address.toLowerCase() === WBNB_ADDRESS.toLowerCase();
+        const isToBNB = toToken.address.toLowerCase() === WBNB_ADDRESS.toLowerCase();
+        let path;
+        if (isFromBNB && !isToBNB) {
+            path = [WBNB_ADDRESS, toToken.address];
+        } else if (!isFromBNB && isToBNB) {
             path = [fromToken.address, WBNB_ADDRESS];
+        } else if (!isFromBNB && !isToBNB) {
+            path = [fromToken.address, WBNB_ADDRESS, toToken.address];
+        } else {
+            // BNB -> BNB not allowed
+            alert('Invalid path');
+            return;
         }
-        const amountIn = fromToken.name === 'BNB' ? ethers.parseEther(fromAmount.toString()) : ethers.parseUnits(fromAmount.toString(), fromToken.decimals || 18);
+        const amountIn = isFromBNB ? ethers.parseEther(fromAmount.toString()) : ethers.parseUnits(fromAmount.toString(), fromToken.decals || fromToken.decimals || 18);
         // Get expected out with 0.5% slippage
         const amountsOut = await router.getAmountsOut(amountIn, path);
         const amountOutMin = amountsOut[amountsOut.length - 1] * 995n / 1000n; // 0.5% slippage
         let tx;
-        if (fromToken.name === 'BNB') {
-            tx = await router.swapExactETHForTokens(amountOutMin, path, signer.address, deadline, { 
-                value: amountIn, 
-                gasLimit: 500000 
-            });
-        } else {
+        if (isFromBNB) {
+            tx = await router.swapExactETHForTokens(amountOutMin, path, signer.address, deadline, { value: amountIn, gasLimit: 500000 });
+        } else if (isToBNB) {
             const tokenContract = new ethers.Contract(fromToken.address, ERC20_ABI, signer);
             const allowance = await tokenContract.allowance(signer.address, ROUTER_ADDRESS);
             if (allowance < amountIn) {
@@ -94,6 +124,15 @@ export const performSwap = async () => {
                 await approveTx.wait();
             }
             tx = await router.swapExactTokensForETH(amountIn, amountOutMin, path, signer.address, deadline, { gasLimit: 500000 });
+        } else {
+            const tokenContract = new ethers.Contract(fromToken.address, ERC20_ABI, signer);
+            const allowance = await tokenContract.allowance(signer.address, ROUTER_ADDRESS);
+            if (allowance < amountIn) {
+                if (swapStatus) swapStatus.textContent = 'Approving tokens...';
+                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: 100000 });
+                await approveTx.wait();
+            }
+            tx = await router.swapExactTokensForTokens(amountIn, amountOutMin, path, signer.address, deadline, { gasLimit: 500000 });
         }
         const receipt = await tx.wait();
         if (swapStatus) swapStatus.textContent = 'Swap successful! Tx: ' + receipt.hash;
@@ -161,11 +200,7 @@ const searchTokens = async (query) => {
         }
         return;
     }
-    const popularTokens = [
-        { name: 'Binance Coin', symbol: 'BNB', address: WBNB_ADDRESS, decimals: 18, logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' },
-        { name: 'Tether', symbol: 'USDT', address: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd', decimals: 18, logo: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
-        { name: 'PancakeSwap', symbol: 'CAKE', address: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', decimals: 18, logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png' },
-    ];
+    const popularTokens = TOKENS;
     const filtered = popularTokens.filter(t => t.name.toLowerCase().includes(query.toLowerCase()) || t.symbol.toLowerCase().includes(query.toLowerCase()));
     tokenList.innerHTML = filtered.map(t => `
         <div class="token-item p-2 border rounded cursor-pointer hover:bg-gray-100" onclick="selectToken('${selectedModalType}', '${JSON.stringify(t).replace(/"/g, '&quot;')}')">
