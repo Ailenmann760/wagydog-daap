@@ -1,6 +1,19 @@
 import { ROUTER_ADDRESS, ROUTER_ABI, ERC20_ABI, WAGY_ADDRESS, WBNB_ADDRESS, TOKENS } from './config.js';
 import { connectWallet } from './wallet.js';
 
+// Address validation and debugging helper
+const validateAndLogAddresses = () => {
+    console.log('=== Address Validation ===');
+    console.log('ROUTER_ADDRESS:', ROUTER_ADDRESS, 'Valid:', ethers.isAddress(ROUTER_ADDRESS));
+    console.log('WBNB_ADDRESS:', WBNB_ADDRESS, 'Valid:', ethers.isAddress(WBNB_ADDRESS));
+    console.log('WAGY_ADDRESS:', WAGY_ADDRESS, 'Valid:', ethers.isAddress(WAGY_ADDRESS));
+    
+    TOKENS.forEach(token => {
+        console.log(`${token.symbol} (${token.name}):`, token.address, 'Valid:', ethers.isAddress(token.address));
+    });
+    console.log('========================');
+};
+
 const fromAmountInput = document.getElementById('from-amount');
 const toAmountInput = document.getElementById('to-amount');
 const fromTokenSelect = document.getElementById('from-token-select');
@@ -46,11 +59,24 @@ const fetchTokenPrices = async () => {
     if (!window.wagyDog.provider) return;
     
     try {
+        // Validate router address
+        if (!ethers.isAddress(ROUTER_ADDRESS)) {
+            console.error('Invalid router address, cannot fetch prices');
+            return;
+        }
+        
         const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, window.wagyDog.provider);
         
         // Update prices for all token pairs
         for (const token of TOKENS) {
             if (token.isNative) continue;
+            
+            // Validate token address before fetching price
+            if (!ethers.isAddress(token.address)) {
+                console.warn(`Invalid address for ${token.symbol}: ${token.address}`);
+                currentPrices[token.address] = 0;
+                continue;
+            }
             
             try {
                 const path = [WBNB_ADDRESS, token.address];
@@ -60,6 +86,9 @@ const fetchTokenPrices = async () => {
                 currentPrices[token.address] = price;
             } catch (error) {
                 console.warn(`Failed to fetch price for ${token.symbol}:`, error);
+                if (error.message.includes('INSUFFICIENT_LIQUIDITY')) {
+                    console.warn(`No liquidity available for ${token.symbol}`);
+                }
                 currentPrices[token.address] = 0;
             }
         }
@@ -96,20 +125,38 @@ const calculateOutputAmount = async (inputAmount) => {
     if (!window.wagyDog.provider || !inputAmount || inputAmount <= 0) return 0;
     
     try {
+        // Validate addresses before making calls
+        if (!ethers.isAddress(ROUTER_ADDRESS)) {
+            console.error('Invalid router address');
+            return 0;
+        }
+        
         const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, window.wagyDog.provider);
         let path = [];
         let amountIn;
         
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
+            if (!ethers.isAddress(toToken.address)) {
+                console.error('Invalid to-token address');
+                return 0;
+            }
             path = [WBNB_ADDRESS, toToken.address];
             amountIn = ethers.parseEther(inputAmount.toString());
         } else if (!fromToken.isNative && toToken.isNative) {
             // Token to BNB
+            if (!ethers.isAddress(fromToken.address)) {
+                console.error('Invalid from-token address');
+                return 0;
+            }
             path = [fromToken.address, WBNB_ADDRESS];
             amountIn = ethers.parseUnits(inputAmount.toString(), fromToken.decimals);
         } else if (!fromToken.isNative && !toToken.isNative) {
             // Token to Token (via BNB)
+            if (!ethers.isAddress(fromToken.address) || !ethers.isAddress(toToken.address)) {
+                console.error('Invalid token addresses');
+                return 0;
+            }
             path = [fromToken.address, WBNB_ADDRESS, toToken.address];
             amountIn = ethers.parseUnits(inputAmount.toString(), fromToken.decimals);
         } else {
@@ -122,6 +169,9 @@ const calculateOutputAmount = async (inputAmount) => {
         return outputAmount;
     } catch (error) {
         console.error('Failed to calculate output amount:', error);
+        if (error.message.includes('INSUFFICIENT_LIQUIDITY')) {
+            console.warn('Insufficient liquidity for this token pair');
+        }
         return 0;
     }
 };
@@ -160,6 +210,20 @@ export const performSwap = async () => {
     // Validate that we're not swapping the same token
     if (fromToken.address === toToken.address) {
         alert('Cannot swap the same token. Please select different tokens.');
+        return;
+    }
+    
+    // Validate addresses are properly formatted
+    if (!ethers.isAddress(fromToken.address) || !ethers.isAddress(toToken.address)) {
+        alert('Invalid token address detected. Please contact support.');
+        console.error('Invalid addresses:', { from: fromToken.address, to: toToken.address });
+        return;
+    }
+    
+    // Validate router address
+    if (!ethers.isAddress(ROUTER_ADDRESS)) {
+        alert('Invalid router address. Please contact support.');
+        console.error('Invalid router address:', ROUTER_ADDRESS);
         return;
     }
     
@@ -220,7 +284,25 @@ export const performSwap = async () => {
         // Execute swap based on token types
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
-            if (swapStatus) swapStatus.textContent = 'Swapping BNB for tokens...';
+            if (swapStatus) swapStatus.textContent = 'Estimating gas and swapping BNB for tokens...';
+            
+            // Estimate gas first
+            let gasEstimate;
+            try {
+                gasEstimate = await router.swapExactETHForTokens.estimateGas(
+                    amountOutMin,
+                    path,
+                    address,
+                    deadline,
+                    { value: amountIn }
+                );
+                // Add 20% buffer to gas estimate
+                gasEstimate = gasEstimate * 120n / 100n;
+            } catch (gasError) {
+                console.warn('Gas estimation failed, using default:', gasError);
+                gasEstimate = 300000n;
+            }
+            
             tx = await router.swapExactETHForTokens(
                 amountOutMin,
                 path,
@@ -228,7 +310,7 @@ export const performSwap = async () => {
                 deadline,
                 { 
                     value: amountIn,
-                    gasLimit: 300000
+                    gasLimit: gasEstimate
                 }
             );
         } else if (!fromToken.isNative && toToken.isNative) {
@@ -238,18 +320,46 @@ export const performSwap = async () => {
             
             if (allowance < amountIn) {
                 if (swapStatus) swapStatus.textContent = 'Approving tokens...';
-                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: 100000 });
+                
+                // Estimate gas for approval
+                let approveGasEstimate;
+                try {
+                    approveGasEstimate = await tokenContract.approve.estimateGas(ROUTER_ADDRESS, amountIn);
+                    approveGasEstimate = approveGasEstimate * 120n / 100n;
+                } catch (gasError) {
+                    console.warn('Approval gas estimation failed, using default:', gasError);
+                    approveGasEstimate = 100000n;
+                }
+                
+                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: approveGasEstimate });
                 await approveTx.wait();
             }
             
-            if (swapStatus) swapStatus.textContent = 'Swapping tokens for BNB...';
+            if (swapStatus) swapStatus.textContent = 'Estimating gas and swapping tokens for BNB...';
+            
+            // Estimate gas for swap
+            let gasEstimate;
+            try {
+                gasEstimate = await router.swapExactTokensForETH.estimateGas(
+                    amountIn,
+                    amountOutMin,
+                    path,
+                    address,
+                    deadline
+                );
+                gasEstimate = gasEstimate * 120n / 100n;
+            } catch (gasError) {
+                console.warn('Swap gas estimation failed, using default:', gasError);
+                gasEstimate = 300000n;
+            }
+            
             tx = await router.swapExactTokensForETH(
                 amountIn,
                 amountOutMin,
                 path,
                 address,
                 deadline,
-                { gasLimit: 300000 }
+                { gasLimit: gasEstimate }
             );
         } else {
             // Token to Token - need approval first
@@ -258,18 +368,46 @@ export const performSwap = async () => {
             
             if (allowance < amountIn) {
                 if (swapStatus) swapStatus.textContent = 'Approving tokens...';
-                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: 100000 });
+                
+                // Estimate gas for approval
+                let approveGasEstimate;
+                try {
+                    approveGasEstimate = await tokenContract.approve.estimateGas(ROUTER_ADDRESS, amountIn);
+                    approveGasEstimate = approveGasEstimate * 120n / 100n;
+                } catch (gasError) {
+                    console.warn('Approval gas estimation failed, using default:', gasError);
+                    approveGasEstimate = 100000n;
+                }
+                
+                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: approveGasEstimate });
                 await approveTx.wait();
             }
             
-            if (swapStatus) swapStatus.textContent = 'Swapping tokens...';
+            if (swapStatus) swapStatus.textContent = 'Estimating gas and swapping tokens...';
+            
+            // Estimate gas for swap
+            let gasEstimate;
+            try {
+                gasEstimate = await router.swapExactTokensForTokens.estimateGas(
+                    amountIn,
+                    amountOutMin,
+                    path,
+                    address,
+                    deadline
+                );
+                gasEstimate = gasEstimate * 120n / 100n;
+            } catch (gasError) {
+                console.warn('Swap gas estimation failed, using default:', gasError);
+                gasEstimate = 350000n;
+            }
+            
             tx = await router.swapExactTokensForTokens(
                 amountIn,
                 amountOutMin,
                 path,
                 address,
                 deadline,
-                { gasLimit: 350000 }
+                { gasLimit: gasEstimate }
             );
         }
         
@@ -297,12 +435,20 @@ export const performSwap = async () => {
         let errorMessage = error.message;
         if (error.code === 4001) {
             errorMessage = 'Transaction rejected by user';
+        } else if (error.message.includes('bad address checksum')) {
+            errorMessage = 'Invalid token address format. Please refresh the page and try again.';
+        } else if (error.message.includes('INVALID_ARGUMENT')) {
+            errorMessage = 'Invalid transaction parameters. Please check token addresses and try again.';
+        } else if (error.message.includes('CALL_EXCEPTION')) {
+            errorMessage = 'Smart contract call failed. The token pair may not have liquidity or the contract may be paused.';
         } else if (error.message.includes('insufficient funds')) {
             errorMessage = 'Insufficient funds for transaction';
         } else if (error.message.includes('INSUFFICIENT_OUTPUT_AMOUNT')) {
             errorMessage = 'Price impact too high. Try reducing amount or increasing slippage tolerance.';
         } else if (error.message.includes('EXPIRED')) {
             errorMessage = 'Transaction expired. Please try again.';
+        } else if (error.message.includes('execution reverted')) {
+            errorMessage = 'Transaction failed. This may be due to insufficient liquidity, slippage, or network issues. Please try a smaller amount.';
         }
         
         if (swapStatus) {
@@ -429,6 +575,9 @@ if (swapActionButton) swapActionButton.addEventListener('click', performSwap);
 
 // Initialize swap interface
 const initializeSwap = async () => {
+    // Validate addresses on startup
+    validateAndLogAddresses();
+    
     updateTokenDisplay(fromTokenSelect, fromToken);
     updateTokenDisplay(toTokenSelect, toToken);
     

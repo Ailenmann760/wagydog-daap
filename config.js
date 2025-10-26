@@ -122,8 +122,8 @@ export const TOKENS = [
   }
 ];
 
-// WagyDog token - for demo purposes using a testnet token
-export const WAGY_ADDRESS = '0xFa60D973F7642B748046464E165A65B7323b0DEE'; // Using CAKE as placeholder for WAGY
+// WagyDog token - for demo purposes using a different testnet token
+export const WAGY_ADDRESS = '0x8301F2213c0eeD49a7E28Ae4c3e91722919B8B47'; // Using BUSD as placeholder for WAGY
 
 // Add WagyDog token to the list
 TOKENS.push({
