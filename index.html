@@ -149,6 +149,21 @@
                 </div>
             </div>
         </section>
+        <!-- Connect Wallet Modal -->
+        <div id="connect-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl w-full max-w-md overflow-hidden">
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h3 class="text-lg font-bold">Connect Wallet</h3>
+                    <button id="connect-modal-close" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="p-6 space-y-3">
+                    <button id="connect-injected" class="btn-primary w-full flex items-center justify-center"><i class="fa-brands fa-ethereum mr-2"></i> Browser Wallet (MetaMask/Trust)</button>
+                    <button id="connect-wc" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-qrcode mr-2"></i> WalletConnect</button>
+                    <button id="connect-deeplink" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-mobile-screen-button mr-2"></i> Open in Wallet App</button>
+                    <p class="text-xs text-gray-500 text-center">BSC Testnet is required. We will help switch networks.</p>
+                </div>
+            </div>
+        </div>
         <!-- Token Selector Modal -->
         <div id="token-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
