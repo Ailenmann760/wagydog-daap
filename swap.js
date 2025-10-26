@@ -342,14 +342,16 @@ const closeModal = () => {
 
 const fetchTokenByAddress = async (address) => {
     if (!window.wagyDog.provider) return null;
-    const contract = new ethers.Contract(address, ERC20_ABI, window.wagyDog.provider);
+    // Normalize to lowercase to avoid checksum errors with ethers v6
+    const normalized = address.toLowerCase();
+    const contract = new ethers.Contract(normalized, ERC20_ABI, window.wagyDog.provider);
     try {
         const [name, symbol, decimals] = await Promise.all([
             contract.name(),
             contract.symbol(),
             contract.decimals()
         ]);
-        return { name: await name, symbol: await symbol, address, decimals: Number(await decimals), logo: 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + (await symbol) };
+        return { name: await name, symbol: await symbol, address: normalized, decimals: Number(await decimals), logo: 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + (await symbol) };
     } catch (error) {
         console.error('Invalid token address');
         return null;
