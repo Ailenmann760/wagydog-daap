@@ -75,10 +75,11 @@ const dummyNfts = [
 
 const createNftCard = (nft) => {
     const { address } = window.wagyDog.getWalletState();
-    const isOwner = address && nft.owner && nft.owner.toLowerCase() === address.toLowerCase();
-    const canBuy = address && !isOwner && nft.isListed;
-    const canList = address && isOwner && !nft.isListed;
-    const canUnlist = address && isOwner && nft.isListed;
+    const hasOnChainOwner = nft.owner && nft.owner !== '0x0000000000000000000000000000000000000000';
+    const isOwner = hasOnChainOwner && address && nft.owner.toLowerCase() === address.toLowerCase();
+    const canBuy = address && hasOnChainOwner && !isOwner && nft.isListed;
+    const canList = address && hasOnChainOwner && isOwner && !nft.isListed;
+    const canUnlist = address && hasOnChainOwner && isOwner && nft.isListed;
     
     return `
         <div class="nft-card group cursor-pointer" onclick="openNftModal(${nft.id})">
@@ -394,6 +395,13 @@ window.buyNFT = async (tokenId, priceStr) => {
     
     try {
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        // Ensure token exists on-chain (avoid dummy items)
+        try {
+            await contract.ownerOf(tokenId);
+        } catch (e) {
+            alert('This NFT does not exist on-chain. Please select a listed on-chain NFT.');
+            return;
+        }
         
         // Get the exact listing price from contract
         const listingPrice = await contract.getListingPrice(tokenId);
@@ -440,7 +448,8 @@ window.openNftModal = (nftId) => {
     if (!nft) return;
     
     const { address } = window.wagyDog.getWalletState();
-    const isOwner = address && nft.owner && nft.owner.toLowerCase() === address.toLowerCase();
+    const hasOnChainOwner = nft.owner && nft.owner !== '0x0000000000000000000000000000000000000000';
+    const isOwner = hasOnChainOwner && address && nft.owner.toLowerCase() === address.toLowerCase();
     
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4';
@@ -492,9 +501,9 @@ window.openNftModal = (nftId) => {
                 </div>
                 
                 <div class="flex gap-3">
-                    ${address && !isOwner && nft.isListed ? `<button onclick="buyNFT(${nft.tokenId}, '${nft.price}'); this.closest('.fixed').remove();" class="btn-primary flex-1">Buy for ${nft.price} BNB</button>` : ''}
-                    ${address && isOwner && !nft.isListed ? `<button onclick="listNFT(${nft.tokenId}); this.closest('.fixed').remove();" class="btn-secondary flex-1">List for Sale</button>` : ''}
-                    ${address && isOwner && nft.isListed ? `<button onclick="unlistNFT(${nft.tokenId}); this.closest('.fixed').remove();" class="btn-secondary flex-1">Remove Listing</button>` : ''}
+                    ${address && hasOnChainOwner && !isOwner && nft.isListed ? `<button onclick="buyNFT(${nft.tokenId}, '${nft.price}'); this.closest('.fixed').remove();" class="btn-primary flex-1">Buy for ${nft.price} BNB</button>` : ''}
+                    ${address && hasOnChainOwner && isOwner && !nft.isListed ? `<button onclick="listNFT(${nft.tokenId}); this.closest('.fixed').remove();" class="btn-secondary flex-1">List for Sale</button>` : ''}
+                    ${address && hasOnChainOwner && isOwner && nft.isListed ? `<button onclick="unlistNFT(${nft.tokenId}); this.closest('.fixed').remove();" class="btn-secondary flex-1">Remove Listing</button>` : ''}
                     ${!address ? '<button onclick="connectWallet(); this.closest(\'.fixed\').remove();" class="btn-primary flex-1">Connect Wallet</button>' : ''}
                 </div>
             </div>
