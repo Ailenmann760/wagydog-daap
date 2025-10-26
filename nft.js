@@ -24,7 +24,8 @@ const dummyNfts = [
         price: '0.1', 
         image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        onChain: false,
         tokenId: 1
     },
     { 
@@ -35,7 +36,8 @@ const dummyNfts = [
         price: '0.25', 
         image: 'https://images.pexels.com/photos/1665241/pexels-photo-1665241.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        onChain: false,
         tokenId: 2
     },
     { 
@@ -46,7 +48,8 @@ const dummyNfts = [
         price: '0.5', 
         image: 'https://images.pexels.com/photos/4587993/pexels-photo-4587993.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        onChain: false,
         tokenId: 3
     },
     { 
@@ -57,7 +60,8 @@ const dummyNfts = [
         price: '0.15', 
         image: 'https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        onChain: false,
         tokenId: 4
     },
     { 
@@ -68,7 +72,8 @@ const dummyNfts = [
         price: '1.0', 
         image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        onChain: false,
         tokenId: 5
     }
 ];
@@ -76,7 +81,7 @@ const dummyNfts = [
 const createNftCard = (nft) => {
     const { address } = window.wagyDog.getWalletState();
     const isOwner = address && nft.owner && nft.owner.toLowerCase() === address.toLowerCase();
-    const canBuy = address && !isOwner && nft.isListed;
+    const canBuy = address && !isOwner && nft.isListed && nft.onChain;
     const canList = address && isOwner && !nft.isListed;
     const canUnlist = address && isOwner && nft.isListed;
     
@@ -84,7 +89,7 @@ const createNftCard = (nft) => {
         <div class="nft-card group cursor-pointer" onclick="openNftModal(${nft.id})">
             <div class="relative overflow-hidden rounded-t-xl">
                 <img src="${nft.image}" alt="${nft.name}" class="nft-card-image group-hover:scale-105 transition-transform duration-300">
-                ${nft.isListed ? '<div class="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">For Sale</div>' : ''}
+                ${nft.isListed && nft.onChain ? '<div class="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold">For Sale</div>' : ''}
                 ${isOwner ? '<div class="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-bold">Owned</div>' : ''}
             </div>
             <div class="nft-card-content">
@@ -96,7 +101,7 @@ const createNftCard = (nft) => {
                 <div class="flex flex-col">
                     <span class="text-gray-400 text-xs">Price</span>
                     <span class="font-bold text-white">
-                        ${nft.isListed ? nft.price + ' BNB' : 'Not Listed'}
+                        ${nft.isListed && nft.onChain ? nft.price + ' BNB' : 'Not Listed'}
                     </span>
                 </div>
                 <div class="flex flex-col gap-1">
@@ -153,7 +158,8 @@ const fetchNftsFromContract = async () => {
                     artist: 'WagyDog Community',
                     owner: owner,
                     price: isListed ? ethers.formatEther(listingPrice) : '0',
-                    isListed: isListed
+                    isListed: isListed,
+                    onChain: true
                 });
             } catch (error) {
                 console.warn(`Failed to fetch NFT ${i}:`, error);
@@ -400,6 +406,13 @@ window.buyNFT = async (tokenId, priceStr) => {
         if (listingPrice === 0n) {
             alert('This NFT is no longer listed for sale.');
             renderNfts();
+            return;
+        }
+        // Additional guard: ensure token exists and fetch owner
+        try {
+            await contract.ownerOf(tokenId);
+        } catch (e) {
+            alert('This NFT does not exist on-chain.');
             return;
         }
         
