@@ -15,6 +15,8 @@
     <script src="https://unpkg.com/ipfs-http-client@60.0.0/dist/index.min.js"></script>
     <!-- Ethers -->
     <script src="https://unpkg.com/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <!-- WalletConnect -->
+    <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.11.0/dist/index.umd.js"></script>
 </head>
 <body class="relative">
     <header class="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md shadow-lg border-b border-white/10">
@@ -246,11 +248,33 @@
                     <h3 class="text-lg font-bold">Connect Wallet</h3>
                     <button id="connect-modal-close" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
                 </div>
-                <div class="p-6 space-y-3">
-                    <button id="connect-injected" class="btn-primary w-full flex items-center justify-center"><i class="fa-brands fa-ethereum mr-2"></i> Browser Wallet (MetaMask/Trust)</button>
-                    <button id="connect-wc" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-qrcode mr-2"></i> WalletConnect</button>
-                    <button id="connect-deeplink" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-mobile-screen-button mr-2"></i> Open in Wallet App</button>
-                    <p class="text-xs text-gray-500 text-center">BSC Testnet is required. We will help switch networks.</p>
+                <div class="p-6">
+                    <p class="text-sm text-gray-600 mb-4 text-center">Choose your preferred wallet to connect to WagyDog</p>
+                    
+                    <!-- Dynamic wallet options will be populated here -->
+                    <div id="wallet-options-container" class="space-y-3 mb-4">
+                        <!-- Fallback buttons for compatibility -->
+                        <button id="connect-injected" class="wallet-option-btn">
+                            <i class="fa-brands fa-ethereum text-2xl"></i>
+                            <span>Browser Wallet</span>
+                        </button>
+                        <button id="connect-wc" class="wallet-option-btn">
+                            <i class="fa-solid fa-qrcode text-2xl"></i>
+                            <span>WalletConnect</span>
+                        </button>
+                        <button id="connect-deeplink" class="wallet-option-btn">
+                            <i class="fa-solid fa-mobile-screen-button text-2xl"></i>
+                            <span>Mobile Wallets</span>
+                        </button>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="text-xs text-gray-500">BSC Testnet required • We'll help you switch networks</p>
+                        <div class="flex items-center justify-center mt-2 text-xs text-gray-400">
+                            <i class="fas fa-shield-alt mr-1"></i>
+                            <span>Secure connection via HTTPS</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

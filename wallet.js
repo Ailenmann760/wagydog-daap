@@ -1,16 +1,19 @@
-import { CHAIN_CONFIG, PROJECT_ID } from './config.js';
+import { CHAIN_CONFIG, PROJECT_ID, WALLET_CONFIG } from './config.js';
 
 window.wagyDog = {
     provider: null,
     signer: null,
     address: null,
+    connectedWallet: null,
     getWalletState: function() {
         return {
             provider: this.provider,
             signer: this.signer,
-            address: this.address
+            address: this.address,
+            connectedWallet: this.connectedWallet
         };
-    }
+    },
+    signTransaction: signTransaction
 };
 
 export const updateUi = async (address) => {
@@ -126,7 +129,7 @@ const connectWithInjected = async () => {
 
 const connectWithWalletConnect = async () => {
     if (!window.WalletConnectEthereumProvider) throw new Error('WalletConnect provider not loaded');
-    const provider = await window.WalletConnectEthereumProvider.init({
+    const provider = await window.WalletConnectEthereumProvider.default.init({
         projectId: PROJECT_ID,
         chains: [97],
         showQrModal: true,
@@ -180,13 +183,10 @@ export const connectWallet = async () => {
         if (window.ethereum) {
             console.log('Using injected wallet');
             await connectWithInjected();
-        } else if (isMobile && !isDAppBrowser) {
-            // Mobile without wallet - show connection modal
+        } else {
+            // Show wallet selection modal
             openConnectModal();
             return;
-        } else {
-            // Desktop without wallet
-            throw new Error('No wallet found. Please install MetaMask or another Web3 wallet.');
         }
         
         console.log('Wallet connected successfully:', window.wagyDog.address);
@@ -234,6 +234,113 @@ export const connectWallet = async () => {
     }
 };
 
+// Enhanced transaction signing function
+export const signTransaction = async (transactionRequest) => {
+    const { signer } = window.wagyDog.getWalletState();
+    if (!signer) {
+        throw new Error('No wallet connected');
+    }
+    
+    try {
+        // Show transaction confirmation
+        const confirmed = await showTransactionConfirmation(transactionRequest);
+        if (!confirmed) {
+            throw new Error('Transaction rejected by user');
+        }
+        
+        // Sign and send transaction
+        const tx = await signer.sendTransaction(transactionRequest);
+        
+        // Show pending status
+        showTransactionStatus('pending', tx.hash);
+        
+        // Wait for confirmation
+        const receipt = await tx.wait();
+        
+        // Show success status
+        showTransactionStatus('success', receipt.hash);
+        
+        return receipt;
+    } catch (error) {
+        showTransactionStatus('error', null, error.message);
+        throw error;
+    }
+};
+
+const showTransactionConfirmation = async (txRequest) => {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4';
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl max-w-md w-full p-6">
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-4">⚠️</div>
+                    <h3 class="text-xl font-bold mb-2">Confirm Transaction</h3>
+                    <p class="text-gray-600">Please review the transaction details</p>
+                </div>
+                
+                <div class="bg-gray-50 rounded-lg p-4 mb-6 text-sm">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-600">To:</span>
+                        <span class="font-mono">${txRequest.to?.substring(0, 10)}...${txRequest.to?.substring(txRequest.to.length - 8)}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-600">Value:</span>
+                        <span>${txRequest.value ? ethers.formatEther(txRequest.value) + ' BNB' : '0 BNB'}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Gas Limit:</span>
+                        <span>${txRequest.gasLimit || 'Auto'}</span>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button class="btn-secondary flex-1" onclick="this.closest('.fixed').remove(); resolve(false);">Cancel</button>
+                    <button class="btn-primary flex-1" onclick="this.closest('.fixed').remove(); resolve(true);">Confirm</button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listeners
+        modal.querySelector('.btn-secondary').onclick = () => {
+            modal.remove();
+            resolve(false);
+        };
+        
+        modal.querySelector('.btn-primary').onclick = () => {
+            modal.remove();
+            resolve(true);
+        };
+        
+        document.body.appendChild(modal);
+    });
+};
+
+const showTransactionStatus = (status, hash, error = null) => {
+    const statusEl = document.getElementById('swap-status');
+    if (!statusEl) return;
+    
+    statusEl.classList.remove('hidden');
+    
+    switch (status) {
+        case 'pending':
+            statusEl.style.color = '#3B82F6';
+            statusEl.innerHTML = `⏳ Transaction pending... <a href="https://testnet.bscscan.com/tx/${hash}" target="_blank" class="underline">View on BSCScan</a>`;
+            break;
+        case 'success':
+            statusEl.style.color = '#10B981';
+            statusEl.innerHTML = `✅ Transaction successful! <a href="https://testnet.bscscan.com/tx/${hash}" target="_blank" class="underline">View on BSCScan</a>`;
+            setTimeout(() => statusEl.classList.add('hidden'), 10000);
+            break;
+        case 'error':
+            statusEl.style.color = '#EF4444';
+            statusEl.textContent = `❌ Transaction failed: ${error}`;
+            setTimeout(() => statusEl.classList.add('hidden'), 10000);
+            break;
+    }
+};
+
 export const disconnectWallet = () => {
     window.wagyDog.provider = null;
     window.wagyDog.signer = null;
@@ -248,31 +355,90 @@ export const disconnectWallet = () => {
 export const openConnectModal = () => {
     const modal = document.getElementById('connect-modal');
     if (!modal) return connectWallet();
+    
+    // Populate wallet options dynamically
+    const walletContainer = document.getElementById('wallet-options-container');
+    if (walletContainer) {
+        walletContainer.innerHTML = WALLET_CONFIG.supportedWallets.map(wallet => `
+            <button class="wallet-option-btn" data-wallet="${wallet.id}">
+                <i class="${wallet.icon} text-2xl"></i>
+                <span>${wallet.name}</span>
+            </button>
+        `).join('');
+        
+        // Add click handlers for wallet options
+        walletContainer.querySelectorAll('.wallet-option-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const walletId = btn.dataset.wallet;
+                handleWalletSelection(walletId);
+                modal.classList.add('hidden');
+            });
+        });
+    }
+    
     modal.classList.remove('hidden');
+};
+
+const handleWalletSelection = async (walletId) => {
+    try {
+        const wallet = WALLET_CONFIG.supportedWallets.find(w => w.id === walletId);
+        if (!wallet) throw new Error('Wallet not supported');
+        
+        // Check if we're on mobile and need deep linking
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile && !window.ethereum) {
+            // Use deep linking for mobile
+            const currentUrl = encodeURIComponent(window.location.href);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const deepLink = isIOS ? wallet.deepLink.ios : wallet.deepLink.android;
+            
+            if (deepLink) {
+                const finalUrl = deepLink.replace('{url}', window.location.host + window.location.pathname);
+                window.location.href = finalUrl;
+                return;
+            }
+        }
+        
+        // Try injected wallet connection
+        if (window.ethereum) {
+            await connectWithInjected();
+        } else {
+            // Fallback to WalletConnect
+            await connectWithWalletConnect();
+        }
+        
+        await updateUi(window.wagyDog.address);
+        
+        // Dispatch wallet connected event
+        window.dispatchEvent(new CustomEvent('walletConnected', { 
+            detail: { address: window.wagyDog.address, wallet: walletId } 
+        }));
+        
+    } catch (error) {
+        console.error(`Failed to connect with ${walletId}:`, error);
+        alert(`Failed to connect with ${walletId}: ${error.message}`);
+    }
 };
 
 // Modal actions
 document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('connect-modal');
     const closeBtn = document.getElementById('connect-modal-close');
-    const injectedBtn = document.getElementById('connect-injected');
-    const wcBtn = document.getElementById('connect-wc');
-    const deepLinkBtn = document.getElementById('connect-deeplink');
     
     if (closeBtn) closeBtn.addEventListener('click', () => modal?.classList.add('hidden'));
     if (modal) modal.addEventListener('click', (e) => { 
         if (e.target === modal) modal.classList.add('hidden'); 
     });
     
+    // Legacy button support for backward compatibility
+    const injectedBtn = document.getElementById('connect-injected');
+    const wcBtn = document.getElementById('connect-wc');
+    const deepLinkBtn = document.getElementById('connect-deeplink');
+    
     if (injectedBtn) injectedBtn.addEventListener('click', async () => { 
         modal?.classList.add('hidden'); 
-        try {
-            await connectWithInjected();
-            await updateUi(window.wagyDog.address);
-        } catch (error) {
-            console.error('Injected wallet connection failed:', error);
-            alert(`Connection failed: ${error.message}`);
-        }
+        await handleWalletSelection('metamask');
     });
     
     if (wcBtn) wcBtn.addEventListener('click', async () => { 
@@ -280,6 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await connectWithWalletConnect();
             await updateUi(window.wagyDog.address);
+            window.dispatchEvent(new CustomEvent('walletConnected', { 
+                detail: { address: window.wagyDog.address, wallet: 'walletconnect' } 
+            }));
         } catch (error) {
             console.error('WalletConnect connection failed:', error);
             alert(`WalletConnect failed: ${error.message}`);
@@ -287,32 +456,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     if (deepLinkBtn) deepLinkBtn.addEventListener('click', () => {
-        const currentUrl = window.location.href;
-        const dappUrl = encodeURIComponent(currentUrl);
+        // Show wallet selection for mobile deep linking
+        const walletOptions = WALLET_CONFIG.supportedWallets.slice(0, 3); // Show top 3 wallets
+        const currentUrl = encodeURIComponent(window.location.href);
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        const isAndroid = /Android/i.test(navigator.userAgent);
         
-        if (isIOS) {
-            // iOS deep links
-            const metamaskDeepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
-            const trustDeepLink = `https://link.trustwallet.com/open_url?coin_id=20000714&url=${dappUrl}`;
-            
-            // Try MetaMask first, fallback to Trust Wallet
-            window.location.href = metamaskDeepLink;
+        walletOptions.forEach((wallet, index) => {
             setTimeout(() => {
-                window.location.href = trustDeepLink;
-            }, 1000);
-        } else if (isAndroid) {
-            // Android deep links
-            const metamaskIntent = `intent://dapp/${window.location.host}${window.location.pathname}#Intent;scheme=https;package=io.metamask;end`;
-            const trustIntent = `intent://${window.location.host}${window.location.pathname}#Intent;scheme=https;package=com.wallet.crypto.trustapp;end`;
-            
-            window.location.href = metamaskIntent;
-            setTimeout(() => {
-                window.location.href = trustIntent;
-            }, 1000);
-        } else {
-            alert('Please install MetaMask or Trust Wallet on your mobile device');
-        }
+                const deepLink = isIOS ? wallet.deepLink.ios : wallet.deepLink.android;
+                if (deepLink) {
+                    const finalUrl = deepLink.replace('{url}', window.location.host + window.location.pathname);
+                    window.location.href = finalUrl;
+                }
+            }, index * 1000);
+        });
     });
 });

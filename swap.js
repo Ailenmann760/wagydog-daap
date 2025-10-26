@@ -1,4 +1,4 @@
-import { ROUTER_ADDRESS, ROUTER_ABI, ERC20_ABI, WAGY_ADDRESS, WBNB_ADDRESS, TOKENS } from './config.js';
+import { ROUTER_ADDRESS, ROUTER_ABI, ERC20_ABI, WAGY_ADDRESS, WBNB_ADDRESS, TOKENS, FACTORY_ADDRESS } from './config.js';
 import { connectWallet } from './wallet.js';
 
 const fromAmountInput = document.getElementById('from-amount');
@@ -9,9 +9,9 @@ const swapDirectionBtn = document.getElementById('swap-direction-btn');
 const swapActionButton = document.getElementById('swap-action-btn');
 const swapStatus = document.getElementById('swap-status');
 
-// Default tokens
-let fromToken = TOKENS.find(t => t.symbol === 'WBNB') || TOKENS[0];
-let toToken = TOKENS.find(t => t.symbol === 'WAGY') || TOKENS[TOKENS.length - 1];
+// Default tokens (use BNB as native and CAKE as target)
+let fromToken = TOKENS.find(t => t.symbol === 'BNB') || TOKENS[0];
+let toToken = TOKENS.find(t => t.symbol === 'CAKE') || TOKENS[2];
 
 // Price fetching and calculation
 let currentPrices = {};
@@ -53,11 +53,12 @@ const fetchTokenPrices = async () => {
             if (token.isNative) continue;
             
             try {
-                const path = [WBNB_ADDRESS, token.address];
+                const tokenAddress = ethers.getAddress(token.address);
+                const path = [WBNB_ADDRESS, tokenAddress];
                 const amountIn = ethers.parseEther('1'); // 1 BNB
                 const amountsOut = await router.getAmountsOut(amountIn, path);
                 const price = parseFloat(ethers.formatUnits(amountsOut[1], token.decimals));
-                currentPrices[token.address] = price;
+                currentPrices[tokenAddress] = price;
             } catch (error) {
                 console.warn(`Failed to fetch price for ${token.symbol}:`, error);
                 currentPrices[token.address] = 0;
@@ -100,20 +101,24 @@ const calculateOutputAmount = async (inputAmount) => {
         let path = [];
         let amountIn;
         
+        // Get proper addresses with checksum
+        let fromAddress = fromToken.isNative ? WBNB_ADDRESS : ethers.getAddress(fromToken.address);
+        let toAddress = toToken.isNative ? WBNB_ADDRESS : ethers.getAddress(toToken.address);
+        
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
-            path = [WBNB_ADDRESS, toToken.address];
+            path = [WBNB_ADDRESS, toAddress];
             amountIn = ethers.parseEther(inputAmount.toString());
         } else if (!fromToken.isNative && toToken.isNative) {
             // Token to BNB
-            path = [fromToken.address, WBNB_ADDRESS];
+            path = [fromAddress, WBNB_ADDRESS];
             amountIn = ethers.parseUnits(inputAmount.toString(), fromToken.decimals);
         } else if (!fromToken.isNative && !toToken.isNative) {
             // Token to Token (via BNB)
-            path = [fromToken.address, WBNB_ADDRESS, toToken.address];
+            path = [fromAddress, WBNB_ADDRESS, toAddress];
             amountIn = ethers.parseUnits(inputAmount.toString(), fromToken.decimals);
         } else {
-            // BNB to BNB (shouldn't happen)
+            // Same token type
             return inputAmount;
         }
         
@@ -179,21 +184,33 @@ export const performSwap = async () => {
         let amountIn;
         let tx;
         
+        // Validate addresses and determine swap path
+        let fromAddress = fromToken.isNative ? WBNB_ADDRESS : fromToken.address;
+        let toAddress = toToken.isNative ? WBNB_ADDRESS : toToken.address;
+        
+        // Ensure addresses are valid checksums
+        try {
+            fromAddress = ethers.getAddress(fromAddress);
+            toAddress = ethers.getAddress(toAddress);
+        } catch (error) {
+            throw new Error(`Invalid token address: ${error.message}`);
+        }
+        
         // Determine swap path and amount
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
-            path = [WBNB_ADDRESS, toToken.address];
+            path = [WBNB_ADDRESS, toAddress];
             amountIn = ethers.parseEther(fromAmount.toString());
         } else if (!fromToken.isNative && toToken.isNative) {
             // Token to BNB
-            path = [fromToken.address, WBNB_ADDRESS];
+            path = [fromAddress, WBNB_ADDRESS];
             amountIn = ethers.parseUnits(fromAmount.toString(), fromToken.decimals);
         } else if (!fromToken.isNative && !toToken.isNative) {
             // Token to Token (via BNB)
-            path = [fromToken.address, WBNB_ADDRESS, toToken.address];
+            path = [fromAddress, WBNB_ADDRESS, toAddress];
             amountIn = ethers.parseUnits(fromAmount.toString(), fromToken.decimals);
         } else {
-            throw new Error('Invalid token pair selected');
+            throw new Error('Cannot swap same token type');
         }
         
         // Get expected output amount with slippage protection
@@ -217,68 +234,98 @@ export const performSwap = async () => {
             }
         }
         
-        // Execute swap based on token types
+        // Execute swap based on token types with proper transaction signing
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
-            if (swapStatus) swapStatus.textContent = 'Swapping BNB for tokens...';
-            tx = await router.swapExactETHForTokens(
-                amountOutMin,
-                path,
-                address,
-                deadline,
-                { 
-                    value: amountIn,
-                    gasLimit: 300000
-                }
-            );
+            if (swapStatus) swapStatus.textContent = 'Preparing BNB to token swap...';
+            
+            const txRequest = {
+                to: ROUTER_ADDRESS,
+                value: amountIn,
+                data: router.interface.encodeFunctionData('swapExactETHForTokens', [
+                    amountOutMin,
+                    path,
+                    address,
+                    deadline
+                ]),
+                gasLimit: 300000
+            };
+            
+            tx = await window.wagyDog.signTransaction(txRequest);
+            
         } else if (!fromToken.isNative && toToken.isNative) {
             // Token to BNB - need approval first
-            const tokenContract = new ethers.Contract(fromToken.address, ERC20_ABI, signer);
+            const tokenContract = new ethers.Contract(fromAddress, ERC20_ABI, signer);
             const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
             
             if (allowance < amountIn) {
-                if (swapStatus) swapStatus.textContent = 'Approving tokens...';
-                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: 100000 });
-                await approveTx.wait();
+                if (swapStatus) swapStatus.textContent = 'Approving tokens for swap...';
+                
+                const approveRequest = {
+                    to: fromAddress,
+                    data: tokenContract.interface.encodeFunctionData('approve', [ROUTER_ADDRESS, amountIn]),
+                    gasLimit: 100000
+                };
+                
+                await window.wagyDog.signTransaction(approveRequest);
             }
             
             if (swapStatus) swapStatus.textContent = 'Swapping tokens for BNB...';
-            tx = await router.swapExactTokensForETH(
-                amountIn,
-                amountOutMin,
-                path,
-                address,
-                deadline,
-                { gasLimit: 300000 }
-            );
+            
+            const txRequest = {
+                to: ROUTER_ADDRESS,
+                data: router.interface.encodeFunctionData('swapExactTokensForETH', [
+                    amountIn,
+                    amountOutMin,
+                    path,
+                    address,
+                    deadline
+                ]),
+                gasLimit: 300000
+            };
+            
+            tx = await window.wagyDog.signTransaction(txRequest);
+            
         } else {
             // Token to Token - need approval first
-            const tokenContract = new ethers.Contract(fromToken.address, ERC20_ABI, signer);
+            const tokenContract = new ethers.Contract(fromAddress, ERC20_ABI, signer);
             const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
             
             if (allowance < amountIn) {
-                if (swapStatus) swapStatus.textContent = 'Approving tokens...';
-                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: 100000 });
-                await approveTx.wait();
+                if (swapStatus) swapStatus.textContent = 'Approving tokens for swap...';
+                
+                const approveRequest = {
+                    to: fromAddress,
+                    data: tokenContract.interface.encodeFunctionData('approve', [ROUTER_ADDRESS, amountIn]),
+                    gasLimit: 100000
+                };
+                
+                await window.wagyDog.signTransaction(approveRequest);
             }
             
             if (swapStatus) swapStatus.textContent = 'Swapping tokens...';
-            tx = await router.swapExactTokensForTokens(
-                amountIn,
-                amountOutMin,
-                path,
-                address,
-                deadline,
-                { gasLimit: 350000 }
-            );
+            
+            const txRequest = {
+                to: ROUTER_ADDRESS,
+                data: router.interface.encodeFunctionData('swapExactTokensForTokens', [
+                    amountIn,
+                    amountOutMin,
+                    path,
+                    address,
+                    deadline
+                ]),
+                gasLimit: 350000
+            };
+            
+            tx = await window.wagyDog.signTransaction(txRequest);
         }
         
-        if (swapStatus) swapStatus.textContent = 'Confirming transaction...';
-        const receipt = await tx.wait();
+        // Transaction is already confirmed by signTransaction function
+        const receipt = tx; // tx is already the receipt from signTransaction
         
         if (swapStatus) {
             swapStatus.style.color = '#10B981';
-            swapStatus.textContent = `Swap successful! View on BSCScan: ${receipt.hash.substring(0, 10)}...`;
+            swapStatus.innerHTML = `Swap successful! <a href="https://testnet.bscscan.com/tx/${receipt.hash}" target="_blank" class="underline">View on BSCScan</a>`;
         }
         
         // Clear input fields

@@ -58,17 +58,36 @@ export const CHAIN_CONFIG = {
   blockExplorerUrls: ['https://testnet.bscscan.com']
 };
 
-// WBNB Testnet for swaps
+// WBNB Testnet for swaps (Wrapped BNB on BSC Testnet)
 export const WBNB_ADDRESS = '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd';
 
+// PancakeSwap V2 Router on BSC Testnet (Live API)
 export const ROUTER_ADDRESS = '0xD99D1c33F9fC3444f8101754aBC46c52416550D1';
+
+// PancakeSwap Factory for pair verification
+export const FACTORY_ADDRESS = '0x6725F303b657a9451d8BA641348b6761A6CC7a17';
+// Complete PancakeSwap V2 Router ABI (Live API)
 export const ROUTER_ABI = [
-    {"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},
-    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETH","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"_factory","type":"address"},{"internalType":"address","name":"_WETH","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
+    {"inputs":[],"name":"WETH","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"uint256","name":"amountADesired","type":"uint256"},{"internalType":"uint256","name":"amountBDesired","type":"uint256"},{"internalType":"uint256","name":"amountAMin","type":"uint256"},{"internalType":"uint256","name":"amountBMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"addLiquidity","outputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"amountB","type":"uint256"},{"internalType":"uint256","name":"liquidity","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"amountTokenDesired","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"addLiquidityETH","outputs":[{"internalType":"uint256","name":"amountToken","type":"uint256"},{"internalType":"uint256","name":"amountETH","type":"uint256"},{"internalType":"uint256","name":"liquidity","type":"uint256"}],"stateMutability":"payable","type":"function"},
+    {"inputs":[],"name":"factory","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"uint256","name":"reserveIn","type":"uint256"},{"internalType":"uint256","name":"reserveOut","type":"uint256"}],"name":"getAmountIn","outputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"}],"stateMutability":"pure","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"reserveIn","type":"uint256"},{"internalType":"uint256","name":"reserveOut","type":"uint256"}],"name":"getAmountOut","outputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"}],"stateMutability":"pure","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsIn","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},
     {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsOut","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},
-    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"}
+    {"inputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"reserveA","type":"uint256"},{"internalType":"uint256","name":"reserveB","type":"uint256"}],"name":"quote","outputs":[{"internalType":"uint256","name":"amountB","type":"uint256"}],"stateMutability":"pure","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokensSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"payable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETH","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETHSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForTokensSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"stateMutability":"payable","type":"receive"}
 ];
 
+// Standard ERC20 ABI
 export const ERC20_ABI = [
     {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
     {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
@@ -78,47 +97,60 @@ export const ERC20_ABI = [
     {"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
     {"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
     {"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
     {"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
     {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
 ];
 
-// Known tokens on BSC Testnet
+// Live tokens on BSC Testnet (verified addresses)
 export const TOKENS = [
+  {
+    name: 'Binance Coin',
+    symbol: 'BNB',
+    address: 'BNB', // Native BNB
+    decimals: 18,
+    logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png',
+    isNative: true
+  },
   {
     name: 'Wrapped BNB',
     symbol: 'WBNB',
     address: WBNB_ADDRESS,
     decimals: 18,
     logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png',
-    isNative: true
+    isNative: false
   },
   {
     name: 'PancakeSwap Token',
     symbol: 'CAKE',
     address: '0xFa60D973F7642B748046464E165A65B7323b0DEE', // CAKE testnet
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png'
+    logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png',
+    isNative: false
   },
   {
     name: 'Binance USD',
     symbol: 'BUSD',
     address: '0x8301F2213c0eeD49a7E28Ae4c3e91722919B8B47', // BUSD testnet
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/busd-busd-logo.png'
+    logo: 'https://cryptologos.cc/logos/busd-busd-logo.png',
+    isNative: false
   },
   {
     name: 'Tether USD',
     symbol: 'USDT',
     address: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd', // USDT testnet
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/tether-usdt-logo.png'
+    logo: 'https://cryptologos.cc/logos/tether-usdt-logo.png',
+    isNative: false
   },
   {
     name: 'USD Coin',
     symbol: 'USDC',
     address: '0x64544969ed7EBf5f083679233325356EbE738930', // USDC testnet
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png'
+    logo: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png',
+    isNative: false
   }
 ];
 
@@ -131,5 +163,86 @@ TOKENS.push({
   symbol: 'WAGY',
   address: WAGY_ADDRESS,
   decimals: 18,
-  logo: './wagydog-logo.png'
+  logo: './wagydog-logo.png',
+  isNative: false
 });
+
+// Magic Eden API configuration for NFT marketplace
+export const MAGIC_EDEN_CONFIG = {
+  baseUrl: 'https://api-mainnet.magiceden.dev/v2',
+  testnetUrl: 'https://api-testnet.magiceden.dev/v2',
+  collections: {
+    wagydog: 'wagydog_nft_collection'
+  }
+};
+
+// Wallet connection configuration
+export const WALLET_CONFIG = {
+  walletConnect: {
+    projectId: PROJECT_ID,
+    chains: [97], // BSC Testnet
+    methods: [
+      'eth_sendTransaction',
+      'eth_signTransaction', 
+      'eth_sign',
+      'personal_sign',
+      'eth_signTypedData'
+    ]
+  },
+  supportedWallets: [
+    {
+      name: 'MetaMask',
+      id: 'metamask',
+      icon: 'fa-brands fa-ethereum',
+      deepLink: {
+        ios: 'https://metamask.app.link/dapp/',
+        android: 'intent://dapp/{url}#Intent;scheme=https;package=io.metamask;end'
+      }
+    },
+    {
+      name: 'Trust Wallet',
+      id: 'trust',
+      icon: 'fa-solid fa-shield-halved',
+      deepLink: {
+        ios: 'https://link.trustwallet.com/open_url?coin_id=20000714&url=',
+        android: 'intent://{url}#Intent;scheme=https;package=com.wallet.crypto.trustapp;end'
+      }
+    },
+    {
+      name: 'Coinbase Wallet',
+      id: 'coinbase',
+      icon: 'fa-solid fa-wallet',
+      deepLink: {
+        ios: 'https://go.cb-w.com/dapp?cb_url=',
+        android: 'intent://{url}#Intent;scheme=https;package=org.toshi;end'
+      }
+    },
+    {
+      name: 'OKX Wallet',
+      id: 'okx',
+      icon: 'fa-solid fa-coins',
+      deepLink: {
+        ios: 'okx://wallet/dapp/url?dappUrl=',
+        android: 'intent://{url}#Intent;scheme=https;package=com.okinc.okex.gp;end'
+      }
+    },
+    {
+      name: 'Phantom',
+      id: 'phantom',
+      icon: 'fa-solid fa-ghost',
+      deepLink: {
+        ios: 'https://phantom.app/ul/browse/',
+        android: 'intent://{url}#Intent;scheme=https;package=app.phantom;end'
+      }
+    },
+    {
+      name: 'Solflare',
+      id: 'solflare',
+      icon: 'fa-solid fa-sun',
+      deepLink: {
+        ios: 'https://solflare.com/ul/v1/browse/',
+        android: 'intent://{url}#Intent;scheme=https;package=com.solflare.mobile;end'
+      }
+    }
+  ]
+};

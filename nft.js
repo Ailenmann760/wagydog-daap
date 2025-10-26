@@ -1,4 +1,4 @@
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from './config.js';
+import { CONTRACT_ADDRESS, CONTRACT_ABI, MAGIC_EDEN_CONFIG } from './config.js';
 import { connectWallet } from './wallet.js';
 
 const mintBtn = document.getElementById('mint-nft-btn');
@@ -249,57 +249,121 @@ document.getElementById('artwork-upload').addEventListener('change', (e) => {
 async function uploadAndMintNFT() {
     const { signer, address } = window.wagyDog.getWalletState();
     if (!signer || !address) {
-        alert('Connect wallet first.');
+        showNotification('error', 'Connect wallet first.');
         connectWallet();
         return;
     }
+    
     const fileInput = document.getElementById('artwork-upload');
     const name = document.getElementById('nft-name').value;
     const desc = document.getElementById('nft-desc').value;
     const initialPrice = document.getElementById('nft-price').value;
+    
     if (!fileInput.files[0] || !name || !desc) {
-        alert('Provide image, name, and description.');
+        showNotification('error', 'Please provide image, name, and description.');
         return;
     }
+    
     try {
-        uploadMintBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Creating...';
-        // Upload image
+        uploadMintBtn.innerHTML = '<div class="loading-spinner"></div>Creating NFT...';
+        uploadMintBtn.disabled = true;
+        
+        showNotification('info', 'Uploading to IPFS...');
+        
+        // Upload image to IPFS
         const imageAdded = await ipfs.add(fileInput.files[0]);
         const imageUri = `https://ipfs.io/ipfs/${imageAdded.cid.toString()}`;
-        // Metadata
-        const metadata = { name, description: desc, image: imageUri };
+        
+        // Create metadata following Magic Eden standards
+        const metadata = {
+            name,
+            description: desc,
+            image: imageUri,
+            attributes: [
+                {
+                    trait_type: "Collection",
+                    value: "WagyDog NFTs"
+                },
+                {
+                    trait_type: "Creator",
+                    value: address.substring(0, 6) + '...' + address.substring(address.length - 4)
+                },
+                {
+                    trait_type: "Rarity",
+                    value: "Common"
+                }
+            ],
+            external_url: window.location.origin,
+            animation_url: null,
+            properties: {
+                category: "image",
+                creators: [{
+                    address: address,
+                    share: 100
+                }]
+            }
+        };
+        
         const metadataAdded = await ipfs.add(new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
         const tokenUri = `https://ipfs.io/ipfs/${metadataAdded.cid.toString()}`;
-        // Get next tokenId
+        
+        showNotification('info', 'Minting NFT...');
+        
+        // Get contract and check mint price
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         const currentSupply = await contract.totalSupply();
         const tokenId = currentSupply + 1n;
-        // Check funds
         const mintPrice = await contract.MINT_PRICE();
         const balance = await signer.getBalance();
+        
         if (balance < mintPrice) {
-            throw new Error('Insufficient BNB for mint');
+            throw new Error('Insufficient BNB for minting');
         }
-        // Mint with URI
-        const tx = await contract.safeMint(address, tokenUri, { value: mintPrice, gasLimit: 300000 });
-        const receipt = await tx.wait();
-        if (initialPrice) {
-            const listTx = await contract.listNFT(tokenId, ethers.parseEther(initialPrice), { gasLimit: 200000 });
-            await listTx.wait();
+        
+        // Use transaction signing pattern
+        const txRequest = {
+            to: CONTRACT_ADDRESS,
+            value: mintPrice,
+            data: contract.interface.encodeFunctionData('safeMint', [address, tokenUri]),
+            gasLimit: 300000
+        };
+        
+        const receipt = await window.wagyDog.signTransaction(txRequest);
+        
+        // Auto-list if price provided
+        if (initialPrice && parseFloat(initialPrice) > 0) {
+            showNotification('info', 'Listing NFT for sale...');
+            
+            const listRequest = {
+                to: CONTRACT_ADDRESS,
+                data: contract.interface.encodeFunctionData('listNFT', [tokenId, ethers.parseEther(initialPrice)]),
+                gasLimit: 200000
+            };
+            
+            await window.wagyDog.signTransaction(listRequest);
+            await logNFTActivity(tokenId, 'list', initialPrice, address);
         }
-        alert('NFT created and minted!');
+        
+        showNotification('success', 'NFT created and minted successfully!', `https://testnet.bscscan.com/tx/${receipt.hash}`);
+        
+        // Log mint activity
+        await logNFTActivity(tokenId, 'mint', ethers.formatEther(mintPrice), address);
+        
         // Reset form
         document.getElementById('nft-name').value = '';
         document.getElementById('nft-desc').value = '';
         document.getElementById('nft-price').value = '';
         document.getElementById('preview').classList.add('hidden');
         fileInput.value = '';
+        
         renderNfts();
+        
     } catch (error) {
         console.error('Upload/Mint failed:', error);
-        alert(`Failed: ${error.message}. Check funds/gas.`);
+        showNotification('error', `Failed to create NFT: ${error.message}`);
     } finally {
         uploadMintBtn.innerHTML = 'Create & Mint';
+        uploadMintBtn.disabled = false;
     }
 }
 
@@ -307,16 +371,14 @@ async function uploadAndMintNFT() {
 window.listNFT = async (tokenId) => {
     const { signer, address } = window.wagyDog.getWalletState();
     if (!signer || !address) {
-        alert('Please connect your wallet first.');
+        showNotification('error', 'Please connect your wallet first.');
         connectWallet();
         return;
     }
     
-    const price = prompt('Enter listing price in BNB:');
-    if (!price || isNaN(price) || parseFloat(price) <= 0) {
-        alert('Please enter a valid price.');
-        return;
-    }
+    // Show Magic Eden style listing modal
+    const price = await showListingModal(tokenId);
+    if (!price) return;
     
     try {
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
@@ -324,18 +386,27 @@ window.listNFT = async (tokenId) => {
         // Check if user owns the NFT
         const owner = await contract.ownerOf(tokenId);
         if (owner.toLowerCase() !== address.toLowerCase()) {
-            alert('You do not own this NFT.');
+            showNotification('error', 'You do not own this NFT.');
             return;
         }
         
         const priceWei = ethers.parseEther(price);
-        const tx = await contract.listNFT(tokenId, priceWei, { gasLimit: 250000 });
         
-        // Show transaction pending
-        alert(`Listing NFT #${tokenId} for ${price} BNB...\nTransaction: ${tx.hash}`);
+        // Use transaction signing pattern
+        const txRequest = {
+            to: CONTRACT_ADDRESS,
+            data: contract.interface.encodeFunctionData('listNFT', [tokenId, priceWei]),
+            gasLimit: 250000
+        };
         
-        await tx.wait();
-        alert(`NFT #${tokenId} successfully listed for ${price} BNB!`);
+        showNotification('info', `Listing NFT #${tokenId} for ${price} BNB...`);
+        
+        const receipt = await window.wagyDog.signTransaction(txRequest);
+        
+        showNotification('success', `NFT #${tokenId} successfully listed!`, `https://testnet.bscscan.com/tx/${receipt.hash}`);
+        
+        // Log activity
+        await logNFTActivity(tokenId, 'list', price, address);
         
         // Refresh the gallery
         renderNfts();
@@ -347,37 +418,163 @@ window.listNFT = async (tokenId) => {
         } else if (error.message.includes('insufficient funds')) {
             errorMessage = 'Insufficient funds for gas fees';
         }
-        alert(`Listing failed: ${errorMessage}`);
+        showNotification('error', `Listing failed: ${errorMessage}`);
     }
+};
+
+// Magic Eden style listing modal
+const showListingModal = async (tokenId) => {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4';
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl max-w-md w-full p-6">
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-4">🏷️</div>
+                    <h3 class="text-xl font-bold mb-2">List NFT for Sale</h3>
+                    <p class="text-gray-600">Set a price for NFT #${tokenId}</p>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Price (BNB)</label>
+                    <div class="relative">
+                        <input type="number" id="listing-price" step="0.001" min="0.001" 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                               placeholder="0.1">
+                        <span class="absolute right-3 top-3 text-gray-500">BNB</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Minimum: 0.001 BNB</p>
+                </div>
+                
+                <div class="bg-blue-50 rounded-lg p-4 mb-6">
+                    <h4 class="font-semibold text-blue-900 mb-2">💡 Listing Tips</h4>
+                    <ul class="text-sm text-blue-800 space-y-1">
+                        <li>• Research similar NFTs for pricing</li>
+                        <li>• Lower prices sell faster</li>
+                        <li>• You can change the price later</li>
+                    </ul>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button class="btn-secondary flex-1" onclick="this.closest('.fixed').remove(); resolve(null);">Cancel</button>
+                    <button class="btn-primary flex-1" onclick="handleListingSubmit()">List NFT</button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listeners
+        modal.querySelector('.btn-secondary').onclick = () => {
+            modal.remove();
+            resolve(null);
+        };
+        
+        window.handleListingSubmit = () => {
+            const priceInput = modal.querySelector('#listing-price');
+            const price = parseFloat(priceInput.value);
+            
+            if (!price || isNaN(price) || price <= 0) {
+                alert('Please enter a valid price.');
+                return;
+            }
+            
+            if (price < 0.001) {
+                alert('Minimum price is 0.001 BNB.');
+                return;
+            }
+            
+            modal.remove();
+            resolve(price.toString());
+        };
+        
+        document.body.appendChild(modal);
+        
+        // Focus on price input
+        setTimeout(() => {
+            modal.querySelector('#listing-price').focus();
+        }, 100);
+    });
 };
 
 window.unlistNFT = async (tokenId) => {
     const { signer, address } = window.wagyDog.getWalletState();
     if (!signer || !address) {
-        alert('Please connect your wallet first.');
+        showNotification('error', 'Please connect your wallet first.');
         return;
     }
     
-    if (!confirm('Are you sure you want to remove this listing?')) {
-        return;
-    }
+    const confirmed = await showUnlistConfirmation(tokenId);
+    if (!confirmed) return;
     
     try {
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         
-        // List with price 0 to unlist
-        const tx = await contract.listNFT(tokenId, 0, { gasLimit: 200000 });
+        // Use transaction signing pattern
+        const txRequest = {
+            to: CONTRACT_ADDRESS,
+            data: contract.interface.encodeFunctionData('listNFT', [tokenId, 0]), // Price 0 to unlist
+            gasLimit: 200000
+        };
         
-        alert(`Removing listing for NFT #${tokenId}...\nTransaction: ${tx.hash}`);
+        showNotification('info', `Removing listing for NFT #${tokenId}...`);
         
-        await tx.wait();
-        alert(`NFT #${tokenId} listing removed successfully!`);
+        const receipt = await window.wagyDog.signTransaction(txRequest);
+        
+        showNotification('success', `NFT #${tokenId} listing removed!`, `https://testnet.bscscan.com/tx/${receipt.hash}`);
+        
+        // Log activity
+        await logNFTActivity(tokenId, 'unlist', '0', address);
         
         renderNfts();
     } catch (error) {
         console.error('Unlisting failed:', error);
-        alert(`Unlisting failed: ${error.message}`);
+        showNotification('error', `Unlisting failed: ${error.message}`);
     }
+};
+
+const showUnlistConfirmation = async (tokenId) => {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4';
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl max-w-md w-full p-6">
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-4">🗑️</div>
+                    <h3 class="text-xl font-bold mb-2">Remove Listing</h3>
+                    <p class="text-gray-600">Are you sure you want to remove NFT #${tokenId} from sale?</p>
+                </div>
+                
+                <div class="bg-yellow-50 rounded-lg p-4 mb-6">
+                    <div class="flex items-start gap-3">
+                        <span class="text-yellow-600 text-xl">⚠️</span>
+                        <div>
+                            <h4 class="font-semibold text-yellow-800 mb-1">Note</h4>
+                            <p class="text-sm text-yellow-700">This will remove your NFT from the marketplace. You can list it again later.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button class="btn-secondary flex-1" onclick="this.closest('.fixed').remove(); resolve(false);">Cancel</button>
+                    <button class="btn-primary flex-1" onclick="this.closest('.fixed').remove(); resolve(true);">Remove Listing</button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listeners
+        modal.querySelector('.btn-secondary').onclick = () => {
+            modal.remove();
+            resolve(false);
+        };
+        
+        modal.querySelector('.btn-primary').onclick = () => {
+            modal.remove();
+            resolve(true);
+        };
+        
+        document.body.appendChild(modal);
+    });
 };
 
 window.buyNFT = async (tokenId, priceStr) => {
@@ -388,9 +585,9 @@ window.buyNFT = async (tokenId, priceStr) => {
         return;
     }
     
-    if (!confirm(`Are you sure you want to buy this NFT for ${priceStr} BNB?`)) {
-        return;
-    }
+    // Show Magic Eden style confirmation modal
+    const confirmed = await showPurchaseConfirmation(tokenId, priceStr);
+    if (!confirmed) return;
     
     try {
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
@@ -398,7 +595,7 @@ window.buyNFT = async (tokenId, priceStr) => {
         // Get the exact listing price from contract
         const listingPrice = await contract.getListingPrice(tokenId);
         if (listingPrice === 0n) {
-            alert('This NFT is no longer listed for sale.');
+            showNotification('error', 'This NFT is no longer listed for sale.');
             renderNfts();
             return;
         }
@@ -407,19 +604,26 @@ window.buyNFT = async (tokenId, priceStr) => {
         const balance = await signer.getBalance();
         const gasEstimate = 300000n * 20000000000n; // Rough gas estimate
         if (balance < listingPrice + gasEstimate) {
-            alert('Insufficient BNB balance for this purchase.');
+            showNotification('error', 'Insufficient BNB balance for this purchase.');
             return;
         }
         
-        const tx = await contract.buyNFT(tokenId, { 
-            value: listingPrice, 
-            gasLimit: 300000 
-        });
+        // Use transaction signing pattern
+        const txRequest = {
+            to: CONTRACT_ADDRESS,
+            value: listingPrice,
+            data: contract.interface.encodeFunctionData('buyNFT', [tokenId]),
+            gasLimit: 300000
+        };
         
-        alert(`Purchasing NFT #${tokenId} for ${ethers.formatEther(listingPrice)} BNB...\nTransaction: ${tx.hash}`);
+        showNotification('info', `Purchasing NFT #${tokenId}...`);
         
-        const receipt = await tx.wait();
-        alert(`NFT #${tokenId} purchased successfully!\nTransaction: ${receipt.hash}\nView on BSCScan: https://testnet.bscscan.com/tx/${receipt.hash}`);
+        const receipt = await window.wagyDog.signTransaction(txRequest);
+        
+        showNotification('success', `NFT #${tokenId} purchased successfully!`, `https://testnet.bscscan.com/tx/${receipt.hash}`);
+        
+        // Update Magic Eden style activity
+        await logNFTActivity(tokenId, 'purchase', ethers.formatEther(listingPrice), address);
         
         renderNfts();
     } catch (error) {
@@ -430,8 +634,130 @@ window.buyNFT = async (tokenId, priceStr) => {
         } else if (error.message.includes('insufficient funds')) {
             errorMessage = 'Insufficient funds for this purchase';
         }
-        alert(`Purchase failed: ${errorMessage}`);
+        showNotification('error', `Purchase failed: ${errorMessage}`);
     }
+};
+
+// Magic Eden style purchase confirmation
+const showPurchaseConfirmation = async (tokenId, priceStr) => {
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4';
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl max-w-md w-full p-6">
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-4">🛒</div>
+                    <h3 class="text-xl font-bold mb-2">Complete Purchase</h3>
+                    <p class="text-gray-600">You are about to purchase NFT #${tokenId}</p>
+                </div>
+                
+                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-gray-600">Item:</span>
+                        <span class="font-semibold">WagyDog NFT #${tokenId}</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-gray-600">Price:</span>
+                        <span class="font-bold text-lg">${priceStr} BNB</span>
+                    </div>
+                    <div class="border-t pt-3 mt-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Total:</span>
+                            <span class="font-bold text-xl text-blue-600">${priceStr} BNB</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button class="btn-secondary flex-1" onclick="this.closest('.fixed').remove(); resolve(false);">Cancel</button>
+                    <button class="btn-primary flex-1" onclick="this.closest('.fixed').remove(); resolve(true);">Purchase Now</button>
+                </div>
+                
+                <p class="text-xs text-gray-500 text-center mt-4">
+                    🔒 Secure transaction on BSC Testnet
+                </p>
+            </div>
+        `;
+        
+        // Add event listeners
+        modal.querySelector('.btn-secondary').onclick = () => {
+            modal.remove();
+            resolve(false);
+        };
+        
+        modal.querySelector('.btn-primary').onclick = () => {
+            modal.remove();
+            resolve(true);
+        };
+        
+        document.body.appendChild(modal);
+    });
+};
+
+// Magic Eden style notifications
+const showNotification = (type, message, link = null) => {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transition-all duration-300 transform translate-x-full`;
+    
+    const colors = {
+        success: 'bg-green-500 text-white',
+        error: 'bg-red-500 text-white',
+        info: 'bg-blue-500 text-white',
+        warning: 'bg-yellow-500 text-black'
+    };
+    
+    const icons = {
+        success: '✅',
+        error: '❌',
+        info: 'ℹ️',
+        warning: '⚠️'
+    };
+    
+    notification.className += ` ${colors[type] || colors.info}`;
+    
+    notification.innerHTML = `
+        <div class="flex items-start gap-3">
+            <span class="text-xl">${icons[type] || icons.info}</span>
+            <div class="flex-1">
+                <p class="font-semibold mb-1">${message}</p>
+                ${link ? `<a href="${link}" target="_blank" class="text-sm underline opacity-90">View Transaction</a>` : ''}
+            </div>
+            <button onclick="this.closest('.fixed').remove()" class="text-xl opacity-70 hover:opacity-100">&times;</button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+};
+
+// Magic Eden style activity logging
+const logNFTActivity = async (tokenId, action, price, userAddress) => {
+    const activity = {
+        tokenId,
+        action,
+        price,
+        user: userAddress,
+        timestamp: Date.now(),
+        txHash: null // Would be populated in real implementation
+    };
+    
+    // Store in localStorage for demo (in production, this would go to a backend)
+    const activities = JSON.parse(localStorage.getItem('nft_activities') || '[]');
+    activities.unshift(activity);
+    localStorage.setItem('nft_activities', JSON.stringify(activities.slice(0, 100))); // Keep last 100
+    
+    console.log('NFT Activity logged:', activity);
 };
 
 // NFT Detail Modal
@@ -571,3 +897,6 @@ if (document.readyState === 'loading') {
 } else {
     initializeMarketplace();
 }
+
+// Make functions globally available
+window.uploadAndMintNFT = uploadAndMintNFT;

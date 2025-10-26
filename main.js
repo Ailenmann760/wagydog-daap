@@ -155,6 +155,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Global functions for marketplace
-window.uploadAndMintNFT = uploadAndMintNFT;
-window.listNFT = listNFT;
-window.buyNFT = buyNFT;
+// These are now defined in nft.js and automatically available
