@@ -76,7 +76,9 @@ const dummyNfts = [
 const createNftCard = (nft) => {
     const { address } = window.wagyDog.getWalletState();
     const isOwner = address && nft.owner && nft.owner.toLowerCase() === address.toLowerCase();
-    const canBuy = address && !isOwner && nft.isListed;
+    // Only allow buying if NFT comes from contract (owner not zero) and is listed
+    const isFromContract = nft.owner && nft.owner !== '0x0000000000000000000000000000000000000000';
+    const canBuy = address && !isOwner && nft.isListed && isFromContract;
     const canList = address && isOwner && !nft.isListed;
     const canUnlist = address && isOwner && nft.isListed;
     
@@ -402,6 +404,17 @@ window.buyNFT = async (tokenId, priceStr) => {
             renderNfts();
             return;
         }
+        // Prevent buying dummy NFTs by ensuring token exists on-chain and owner is not zero
+        try {
+            const currentOwner = await contract.ownerOf(tokenId);
+            if (!currentOwner || currentOwner === '0x0000000000000000000000000000000000000000') {
+                alert('This is a demo NFT and cannot be purchased.');
+                return;
+            }
+        } catch (_) {
+            alert('This NFT does not exist on-chain.');
+            return;
+        }
         
         // Check user balance
         const balance = await signer.getBalance();
@@ -441,6 +454,7 @@ window.openNftModal = (nftId) => {
     
     const { address } = window.wagyDog.getWalletState();
     const isOwner = address && nft.owner && nft.owner.toLowerCase() === address.toLowerCase();
+    const isFromContract = nft.owner && nft.owner !== '0x0000000000000000000000000000000000000000';
     
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4';
@@ -492,7 +506,7 @@ window.openNftModal = (nftId) => {
                 </div>
                 
                 <div class="flex gap-3">
-                    ${address && !isOwner && nft.isListed ? `<button onclick="buyNFT(${nft.tokenId}, '${nft.price}'); this.closest('.fixed').remove();" class="btn-primary flex-1">Buy for ${nft.price} BNB</button>` : ''}
+                    ${address && !isOwner && nft.isListed && isFromContract ? `<button onclick="buyNFT(${nft.tokenId}, '${nft.price}'); this.closest('.fixed').remove();" class="btn-primary flex-1">Buy for ${nft.price} BNB</button>` : ''}
                     ${address && isOwner && !nft.isListed ? `<button onclick="listNFT(${nft.tokenId}); this.closest('.fixed').remove();" class="btn-secondary flex-1">List for Sale</button>` : ''}
                     ${address && isOwner && nft.isListed ? `<button onclick="unlistNFT(${nft.tokenId}); this.closest('.fixed').remove();" class="btn-secondary flex-1">Remove Listing</button>` : ''}
                     ${!address ? '<button onclick="connectWallet(); this.closest(\'.fixed\').remove();" class="btn-primary flex-1">Connect Wallet</button>' : ''}
