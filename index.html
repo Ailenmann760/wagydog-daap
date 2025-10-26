@@ -17,11 +17,11 @@
     <script src="https://unpkg.com/ethers@6.13.2/dist/ethers.umd.min.js"></script>
 </head>
 <body class="relative">
-    <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md shadow-sm">
+    <header class="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md shadow-lg border-b border-white/10">
         <div class="container mx-auto px-6 py-3 flex justify-between items-center">
             <a href="#home" class="flex items-center space-x-3">
-                <img src="wagydog-logo.png" alt="WagyDog Logo" class="h-12 w-auto" onerror="this.src='https://placehold.co/48x48/3B82F6/FFFFFF?text=WD'">
-                <span class="text-2xl font-black text-gray-800 hidden sm:inline">WagyDog</span>
+                <img src="wagydog-logo.png" alt="WagyDog Logo" class="h-12 w-auto rounded-full meme-glow" onerror="this.src='https://placehold.co/48x48/FF6B6B/FFFFFF?text=🚀'">
+                <span class="text-2xl font-black text-white hidden sm:inline gradient-text">WagyDog</span>
             </a>
             <nav class="hidden md:flex items-center space-x-8">
                 <a href="#about" class="nav-link">About</a>
@@ -51,29 +51,99 @@
         </div>
     </header>
     <main>
-        <section id="home" class="pt-32 pb-16 md:pt-48 md:pb-24 bg-gradient-to-r from-blue-900 to-purple-900 text-white text-center fade-in-section">
-            <h1 class="text-4xl md:text-6xl font-bold mb-4 gradient-text">Welcome to WagyDog</h1>
-            <p class="text-lg md:text-xl mb-6">The ultimate NFT marketplace and meme coin platform!</p>
-            <a href="#nft" class="btn-primary">Explore NFTs</a>
+        <section id="home" class="pt-32 pb-16 md:pt-48 md:pb-24 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white text-center fade-in-section relative overflow-hidden">
+            <div class="absolute inset-0 bg-black opacity-20"></div>
+            <div class="relative z-10">
+                <div class="mb-8">
+                    <img src="wagydog-logo.png" alt="WagyDog" class="h-24 w-24 mx-auto mb-4 animate-bounce meme-glow rounded-full" onerror="this.style.display='none'">
+                </div>
+                <h1 class="text-4xl md:text-7xl font-black mb-6 gradient-text">🚀 WagyDog 🌙</h1>
+                <p class="text-lg md:text-2xl mb-4 font-semibold">To The Moon and Beyond! 🌟</p>
+                <p class="text-base md:text-lg mb-8 text-gray-300 max-w-2xl mx-auto">The ultimate meme coin ecosystem with NFT marketplace, DeFi swaps, and community-driven features. Join the pack! 🐕</p>
+                <div class="flex flex-col md:flex-row gap-4 justify-center items-center">
+                    <a href="#nft" class="btn-primary text-lg px-8 py-3">🎨 Explore NFTs</a>
+                    <a href="#swap" class="btn-secondary text-lg px-8 py-3">💱 Start Trading</a>
+                </div>
+                <div class="mt-8 flex justify-center space-x-6 text-3xl">
+                    <span class="animate-pulse">🚀</span>
+                    <span class="animate-bounce">💎</span>
+                    <span class="animate-pulse">🌙</span>
+                    <span class="animate-bounce">⭐</span>
+                    <span class="animate-pulse">🔥</span>
+                </div>
+            </div>
             <canvas id="starfield" class="absolute top-0 left-0 w-full h-full"></canvas>
         </section>
         <section id="about" class="py-20 px-6 space-bg overflow-hidden fade-in-section">
             <div class="container mx-auto text-center space-content">
-                <h2 class="text-3xl font-bold text-white mb-6">About WagyDog</h2>
-                <p class="text-lg text-gray-300 mb-4">WagyDog is a unique blend of NFT collectibles and a meme-inspired cryptocurrency. Join our cosmic community and explore the universe of WagyDogs!</p>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">🐕 About WagyDog 🚀</h2>
+                <div class="max-w-4xl mx-auto">
+                    <p class="text-lg md:text-xl text-gray-300 mb-6">WagyDog is the ultimate meme coin that's going TO THE MOON! 🌙 Combining the power of DeFi, NFTs, and community-driven memes, we're building the most exciting crypto ecosystem in the galaxy!</p>
+                    <div class="grid md:grid-cols-3 gap-6 mt-12">
+                        <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-6 border border-white border-opacity-20">
+                            <div class="text-4xl mb-4">💎</div>
+                            <h3 class="text-xl font-bold text-white mb-2">Diamond Hands</h3>
+                            <p class="text-gray-300">HODL strong with our deflationary tokenomics and reward system!</p>
+                        </div>
+                        <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-6 border border-white border-opacity-20">
+                            <div class="text-4xl mb-4">🎨</div>
+                            <h3 class="text-xl font-bold text-white mb-2">Epic NFTs</h3>
+                            <p class="text-gray-300">Collect rare WagyDog NFTs and trade them in our marketplace!</p>
+                        </div>
+                        <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-6 border border-white border-opacity-20">
+                            <div class="text-4xl mb-4">🔥</div>
+                            <h3 class="text-xl font-bold text-white mb-2">DeFi Swaps</h3>
+                            <p class="text-gray-300">Trade WAGY tokens with zero slippage on PancakeSwap!</p>
+                        </div>
+                    </div>
+                </div>
                 <canvas id="starfield2" class="absolute top-0 left-0 w-full h-full"></canvas>
             </div>
         </section>
-        <section id="whitepaper-cta" class="py-16 px-6 bg-gray-100 fade-in-section">
+        <section id="whitepaper-cta" class="py-16 px-6 bg-gradient-to-r from-pink-500 to-violet-500 fade-in-section">
             <div class="container mx-auto text-center">
-                <h2 class="text-2xl font-bold mb-4">Learn More</h2>
-                <a href="https://wagydog.gitbook.io/wagydog-whitepaper" target="_blank" class="btn-secondary">Read Whitepaper</a>
+                <h2 class="text-2xl md:text-3xl font-bold mb-4 text-white">📚 Learn More About Our Mission</h2>
+                <p class="text-lg text-white mb-6 opacity-90">Dive deep into our tokenomics, roadmap, and vision for the future!</p>
+                <a href="https://wagydog.gitbook.io/wagydog-whitepaper" target="_blank" class="btn-secondary text-lg px-8 py-3">📖 Read Whitepaper</a>
             </div>
         </section>
-        <section id="roadmap" class="py-20 px-6 fade-in-section">
+        <section id="roadmap" class="py-20 px-6 bg-gradient-to-br from-indigo-900 to-purple-900 fade-in-section">
             <div class="container mx-auto text-center">
-                <h2 class="text-3xl font-bold mb-6">Roadmap</h2>
-                <p class="text-lg mb-4">Phase 1: Launch NFT Collection<br>Phase 2: Token Integration<br>Phase 3: Community Expansion</p>
+                <h2 class="text-3xl md:text-4xl font-bold mb-12 text-white">🗺️ Roadmap to the Moon</h2>
+                <div class="max-w-4xl mx-auto">
+                    <div class="grid md:grid-cols-3 gap-8">
+                        <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-6 border border-white border-opacity-20 transform hover:scale-105 transition-transform">
+                            <div class="text-5xl mb-4">🚀</div>
+                            <h3 class="text-xl font-bold text-white mb-3">Phase 1: Launch</h3>
+                            <ul class="text-gray-300 text-left space-y-2">
+                                <li>✅ NFT Collection Launch</li>
+                                <li>✅ Marketplace Development</li>
+                                <li>✅ Community Building</li>
+                                <li>✅ Initial Token Distribution</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-6 border border-white border-opacity-20 transform hover:scale-105 transition-transform">
+                            <div class="text-5xl mb-4">💫</div>
+                            <h3 class="text-xl font-bold text-white mb-3">Phase 2: Expansion</h3>
+                            <ul class="text-gray-300 text-left space-y-2">
+                                <li>🔄 DeFi Integration</li>
+                                <li>🔄 Staking Rewards</li>
+                                <li>🔄 Cross-chain Bridge</li>
+                                <li>🔄 Mobile App</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-6 border border-white border-opacity-20 transform hover:scale-105 transition-transform">
+                            <div class="text-5xl mb-4">🌙</div>
+                            <h3 class="text-xl font-bold text-white mb-3">Phase 3: Moon</h3>
+                            <ul class="text-gray-300 text-left space-y-2">
+                                <li>⏳ DAO Governance</li>
+                                <li>⏳ Metaverse Integration</li>
+                                <li>⏳ Global Partnerships</li>
+                                <li>⏳ TO THE MOON! 🚀</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
         <section id="nft" class="py-20 px-6 space-bg overflow-hidden fade-in-section">
@@ -85,6 +155,22 @@
                     <button id="disconnect-btn" class="btn-secondary ml-4">Disconnect</button>
                 </div>
                 <button id="dashboard-connect-btn" class="btn-primary mb-4 hidden">Connect Wallet</button>
+                
+                <!-- Marketplace Filters -->
+                <div class="flex flex-wrap gap-3 mb-6">
+                    <button id="filter-all" class="filter-btn active" onclick="setFilter('all')">
+                        <i class="fas fa-th-large mr-2"></i>All NFTs
+                    </button>
+                    <button id="filter-listed" class="filter-btn" onclick="setFilter('listed')">
+                        <i class="fas fa-tag mr-2"></i>For Sale
+                    </button>
+                    <button id="filter-owned" class="filter-btn" onclick="setFilter('owned')">
+                        <i class="fas fa-user mr-2"></i>My NFTs
+                    </button>
+                    <button class="btn-primary ml-auto" onclick="renderNfts()">
+                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    </button>
+                </div>
                 <!-- OpenSea-Style Upload Form -->
                 <div class="control-card mb-6 p-6">
                     <h3 class="text-xl font-bold text-white mb-4">Create New NFT</h3>
@@ -105,13 +191,17 @@
                 <div id="nft-gallery" class="dashboard-gallery grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
             </div>
         </section>
-        <section id="swap" class="py-20 px-6 fade-in-section">
+        <section id="swap" class="py-20 px-6 bg-gradient-to-br from-green-900 to-blue-900 fade-in-section">
             <div class="container mx-auto">
-                <h2 class="text-3xl font-bold mb-6">WagyDog Swap</h2>
-                <div class="swap-card">
-                    <div class="swap-card-header">
-                        <h3 class="text-xl font-semibold">Swap Tokens</h3>
-                    </div>
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold mb-4 text-white">💱 WagyDog Swap 🚀</h2>
+                    <p class="text-lg text-gray-300">Trade WAGY tokens instantly with PancakeSwap integration!</p>
+                </div>
+                <div class="max-w-md mx-auto">
+                    <div class="swap-card meme-glow">
+                        <div class="swap-card-header">
+                            <h3 class="text-xl font-semibold text-center">🔄 Swap Tokens</h3>
+                        </div>
                     <div class="token-input-container mb-4">
                         <div class="token-input-header">
                             <span>From</span>
@@ -182,26 +272,109 @@
                 </div>
             </div>
         </div>
-        <section id="partners" class="py-20 px-6 bg-gray-100 fade-in-section">
+        <section id="partners" class="py-20 px-6 bg-gradient-to-r from-yellow-400 to-orange-500 fade-in-section">
             <div class="container mx-auto text-center">
-                <h2 class="text-3xl font-bold mb-6">Our Partners</h2>
-                <p class="text-lg mb-4">Coming soon...</p>
+                <h2 class="text-3xl md:text-4xl font-bold mb-6 text-white">🤝 Our Amazing Partners</h2>
+                <p class="text-lg mb-8 text-white opacity-90">Building the future together with industry leaders!</p>
+                <div class="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+                    <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-xl p-6 border border-white border-opacity-30">
+                        <div class="text-3xl mb-2">🥞</div>
+                        <h3 class="font-bold text-white">PancakeSwap</h3>
+                    </div>
+                    <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-xl p-6 border border-white border-opacity-30">
+                        <div class="text-3xl mb-2">🌐</div>
+                        <h3 class="font-bold text-white">BSC Network</h3>
+                    </div>
+                    <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-xl p-6 border border-white border-opacity-30">
+                        <div class="text-3xl mb-2">🎨</div>
+                        <h3 class="font-bold text-white">OpenSea</h3>
+                    </div>
+                    <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-xl p-6 border border-white border-opacity-30">
+                        <div class="text-3xl mb-2">🚀</div>
+                        <h3 class="font-bold text-white">More Soon!</h3>
+                    </div>
+                </div>
             </div>
         </section>
-        <section id="community" class="py-20 px-6">
+        <section id="community" class="py-20 px-6 bg-gradient-to-br from-purple-900 to-pink-900">
             <div class="container mx-auto text-center">
-                <h2 class="text-3xl font-bold mb-6">Join Our Community</h2>
-                <p class="text-lg mb-4">Follow us on social media for updates!</p>
-                <div class="flex justify-center space-x-4">
-                    <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-discord"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-telegram"></i></a>
+                <h2 class="text-3xl md:text-4xl font-bold mb-6 text-white">🌟 Join the WagyDog Pack! 🐕</h2>
+                <p class="text-lg md:text-xl mb-8 text-gray-300">Connect with fellow WagyDog holders and stay updated on our journey to the moon!</p>
+                <div class="flex justify-center space-x-6 mb-8">
+                    <a href="#" class="social-icon bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-full text-2xl transition-all transform hover:scale-110">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="social-icon bg-indigo-500 hover:bg-indigo-600 text-white p-4 rounded-full text-2xl transition-all transform hover:scale-110">
+                        <i class="fab fa-discord"></i>
+                    </a>
+                    <a href="#" class="social-icon bg-blue-400 hover:bg-blue-500 text-white p-4 rounded-full text-2xl transition-all transform hover:scale-110">
+                        <i class="fab fa-telegram"></i>
+                    </a>
+                    <a href="#" class="social-icon bg-red-500 hover:bg-red-600 text-white p-4 rounded-full text-2xl transition-all transform hover:scale-110">
+                        <i class="fab fa-youtube"></i>
+                    </a>
+                </div>
+                <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-8 max-w-2xl mx-auto border border-white border-opacity-20">
+                    <h3 class="text-xl font-bold text-white mb-4">📈 Community Stats</h3>
+                    <div class="grid md:grid-cols-3 gap-4 text-center">
+                        <div>
+                            <div class="text-2xl font-bold text-yellow-400">10K+</div>
+                            <div class="text-gray-300">Holders</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-green-400">$2M+</div>
+                            <div class="text-gray-300">Market Cap</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-blue-400">500+</div>
+                            <div class="text-gray-300">NFTs Minted</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
     </main>
-    <footer class="py-8 px-6 border-t border-gray-200 text-center">
-        <p>&copy; 2025 WagyDog. All rights reserved.</p>
+    <footer class="py-12 px-6 bg-gradient-to-r from-gray-900 to-black text-center">
+        <div class="container mx-auto">
+            <div class="mb-6">
+                <img src="wagydog-logo.png" alt="WagyDog" class="h-16 w-16 mx-auto mb-4 rounded-full" onerror="this.style.display='none'">
+                <h3 class="text-2xl font-bold text-white mb-2">🚀 WagyDog 🌙</h3>
+                <p class="text-gray-400">To the moon and beyond!</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8 mb-8 text-left max-w-4xl mx-auto">
+                <div>
+                    <h4 class="text-white font-bold mb-3">🔗 Quick Links</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#about" class="hover:text-white transition-colors">About</a></li>
+                        <li><a href="#nft" class="hover:text-white transition-colors">NFT Marketplace</a></li>
+                        <li><a href="#swap" class="hover:text-white transition-colors">Token Swap</a></li>
+                        <li><a href="#roadmap" class="hover:text-white transition-colors">Roadmap</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-3">📚 Resources</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="https://wagydog.gitbook.io/wagydog-whitepaper" target="_blank" class="hover:text-white transition-colors">Whitepaper</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Documentation</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">FAQ</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Support</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-3">🌟 Community</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition-colors">Twitter</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Discord</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Telegram</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">YouTube</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-6">
+                <p class="text-gray-400">&copy; 2025 WagyDog. All rights reserved. 🚀 HODL to the Moon! 🌙</p>
+                <p class="text-sm text-gray-500 mt-2">Not financial advice. Always DYOR! 💎🙌</p>
+            </div>
+        </div>
     </footer>
 
     <script type="module" src="config.js"></script>
