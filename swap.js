@@ -53,14 +53,14 @@ const fetchTokenPrices = async () => {
             if (token.isNative) continue;
             
             try {
-                const path = [WBNB_ADDRESS, token.address];
+                const path = [WBNB_ADDRESS, (token.address || '').toLowerCase()];
                 const amountIn = ethers.parseEther('1'); // 1 BNB
                 const amountsOut = await router.getAmountsOut(amountIn, path);
                 const price = parseFloat(ethers.formatUnits(amountsOut[1], token.decimals));
-                currentPrices[token.address] = price;
+                currentPrices[(token.address || '').toLowerCase()] = price;
             } catch (error) {
                 console.warn(`Failed to fetch price for ${token.symbol}:`, error);
-                currentPrices[token.address] = 0;
+                currentPrices[(token.address || '').toLowerCase()] = 0;
             }
         }
         
@@ -76,15 +76,15 @@ const updateExchangeRate = () => {
     if (!infoContainer) return;
     
     if (fromToken.isNative && !toToken.isNative) {
-        const rate = currentPrices[toToken.address] || 0;
+        const rate = currentPrices[(toToken.address || '').toLowerCase()] || 0;
         infoContainer.textContent = `1 ${fromToken.symbol} = ${rate.toFixed(6)} ${toToken.symbol}`;
     } else if (!fromToken.isNative && toToken.isNative) {
-        const rate = currentPrices[fromToken.address] || 0;
+        const rate = currentPrices[(fromToken.address || '').toLowerCase()] || 0;
         const inverseRate = rate > 0 ? (1 / rate).toFixed(8) : 0;
         infoContainer.textContent = `1 ${fromToken.symbol} = ${inverseRate} ${toToken.symbol}`;
     } else if (!fromToken.isNative && !toToken.isNative) {
-        const fromRate = currentPrices[fromToken.address] || 0;
-        const toRate = currentPrices[toToken.address] || 0;
+        const fromRate = currentPrices[(fromToken.address || '').toLowerCase()] || 0;
+        const toRate = currentPrices[(toToken.address || '').toLowerCase()] || 0;
         const crossRate = (fromRate > 0 && toRate > 0) ? (fromRate / toRate).toFixed(6) : 0;
         infoContainer.textContent = `1 ${fromToken.symbol} = ${crossRate} ${toToken.symbol}`;
     } else {
@@ -102,15 +102,15 @@ const calculateOutputAmount = async (inputAmount) => {
         
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
-            path = [WBNB_ADDRESS, toToken.address];
+            path = [WBNB_ADDRESS, (toToken.address || '').toLowerCase()];
             amountIn = ethers.parseEther(inputAmount.toString());
         } else if (!fromToken.isNative && toToken.isNative) {
             // Token to BNB
-            path = [fromToken.address, WBNB_ADDRESS];
+            path = [(fromToken.address || '').toLowerCase(), WBNB_ADDRESS];
             amountIn = ethers.parseUnits(inputAmount.toString(), fromToken.decimals);
         } else if (!fromToken.isNative && !toToken.isNative) {
             // Token to Token (via BNB)
-            path = [fromToken.address, WBNB_ADDRESS, toToken.address];
+            path = [(fromToken.address || '').toLowerCase(), WBNB_ADDRESS, (toToken.address || '').toLowerCase()];
             amountIn = ethers.parseUnits(inputAmount.toString(), fromToken.decimals);
         } else {
             // BNB to BNB (shouldn't happen)
@@ -182,15 +182,15 @@ export const performSwap = async () => {
         // Determine swap path and amount
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
-            path = [WBNB_ADDRESS, toToken.address];
+            path = [WBNB_ADDRESS, (toToken.address || '').toLowerCase()];
             amountIn = ethers.parseEther(fromAmount.toString());
         } else if (!fromToken.isNative && toToken.isNative) {
             // Token to BNB
-            path = [fromToken.address, WBNB_ADDRESS];
+            path = [(fromToken.address || '').toLowerCase(), WBNB_ADDRESS];
             amountIn = ethers.parseUnits(fromAmount.toString(), fromToken.decimals);
         } else if (!fromToken.isNative && !toToken.isNative) {
             // Token to Token (via BNB)
-            path = [fromToken.address, WBNB_ADDRESS, toToken.address];
+            path = [(fromToken.address || '').toLowerCase(), WBNB_ADDRESS, (toToken.address || '').toLowerCase()];
             amountIn = ethers.parseUnits(fromAmount.toString(), fromToken.decimals);
         } else {
             throw new Error('Invalid token pair selected');
@@ -342,14 +342,15 @@ const closeModal = () => {
 
 const fetchTokenByAddress = async (address) => {
     if (!window.wagyDog.provider) return null;
-    const contract = new ethers.Contract(address, ERC20_ABI, window.wagyDog.provider);
+    const normalized = (address || '').toLowerCase();
+    const contract = new ethers.Contract(normalized, ERC20_ABI, window.wagyDog.provider);
     try {
         const [name, symbol, decimals] = await Promise.all([
             contract.name(),
             contract.symbol(),
             contract.decimals()
         ]);
-        return { name: await name, symbol: await symbol, address, decimals: Number(await decimals), logo: 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + (await symbol) };
+        return { name: await name, symbol: await symbol, address: normalized, decimals: Number(await decimals), logo: 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + (await symbol) };
     } catch (error) {
         console.error('Invalid token address');
         return null;
