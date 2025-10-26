@@ -1,4 +1,4 @@
-import { CHAIN_CONFIG } from './config.js';
+import { CHAIN_CONFIG, PROJECT_ID } from './config.js';
 
 window.wagyDog = {
     provider: null,
@@ -55,51 +55,111 @@ export const updateUi = async (address) => {
     }
 };
 
-export const connectWallet = async () => {
-    if (typeof window.ethereum === 'undefined') {
-        alert('MetaMask or Trust Wallet not installed. Please install one.');
-        return;
+const switchOrAddChain = async (ethProvider) => {
+    try {
+        await ethProvider.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: CHAIN_CONFIG.chainId }]
+        });
+    } catch (switchError) {
+        if (switchError.code === 4902) {
+            await ethProvider.request({
+                method: 'wallet_addEthereumChain',
+                params: [CHAIN_CONFIG]
+            });
+        } else {
+            throw switchError;
+        }
     }
+};
+
+const connectWithInjected = async () => {
+    if (!window.ethereum) throw new Error('No injected wallet found');
+    await switchOrAddChain(window.ethereum);
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || accounts.length === 0) throw new Error('No accounts returned');
+    window.wagyDog.provider = new ethers.BrowserProvider(window.ethereum);
+    window.wagyDog.signer = await window.wagyDog.provider.getSigner();
+    window.wagyDog.address = await window.wagyDog.signer.getAddress();
+    // Listeners
+    window.ethereum.removeAllListeners?.('accountsChanged');
+    window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length > 0) {
+            connectWallet();
+        } else {
+            disconnectWallet();
+        }
+    });
+    window.ethereum.removeAllListeners?.('chainChanged');
+    window.ethereum.on('chainChanged', () => window.location.reload());
+};
+
+const connectWithWalletConnect = async () => {
+    if (!window.WalletConnectEthereumProvider) throw new Error('WalletConnect provider not loaded');
+    const provider = await window.WalletConnectEthereumProvider.init({
+        projectId: PROJECT_ID,
+        chains: [97],
+        showQrModal: true,
+        rpcMap: { 97: CHAIN_CONFIG.rpcUrls[0] },
+        methods: [
+            'eth_sendTransaction',
+            'eth_signTransaction',
+            'eth_sign',
+            'personal_sign',
+            'eth_signTypedData',
+            'wallet_switchEthereumChain',
+            'wallet_addEthereumChain'
+        ]
+    });
+    await provider.enable();
+    // Try ensure correct chain
+    try {
+        await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_CONFIG.chainId }] });
+    } catch (e) {
+        // ignore
+    }
+    window.wagyDog.provider = new ethers.BrowserProvider(provider);
+    window.wagyDog.signer = await window.wagyDog.provider.getSigner();
+    window.wagyDog.address = await window.wagyDog.signer.getAddress();
+    provider.removeAllListeners?.('accountsChanged');
+    provider.on('accountsChanged', (accounts) => {
+        if (accounts.length > 0) {
+            connectWallet();
+        } else {
+            disconnectWallet();
+        }
+    });
+    provider.removeAllListeners?.('chainChanged');
+    provider.on('chainChanged', () => window.location.reload());
+};
+
+export const connectWallet = async () => {
     try {
         console.log('Attempting to connect wallet...');
-        // Switch to BNB Testnet
-        try {
-            await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: '0x61' }],
-            });
-        } catch (switchError) {
-            if (switchError.code === 4902) {
-                await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [CHAIN_CONFIG],
-                });
-            } else {
-                throw switchError;
-            }
+        if (window.ethereum) {
+            await connectWithInjected();
+        } else if (window.WalletConnectEthereumProvider) {
+            await connectWithWalletConnect();
+        } else {
+            // Fallback: try deep link to MetaMask/Trust
+            const dappUrl = encodeURIComponent(window.location.href);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const metamaskDeepLink = `https://metamask.app.link/dapp/${window.location.host}`;
+            const trustDeepLink = `https://link.trustwallet.com/open_url?coin_id=20000714&url=${dappUrl}`;
+            window.location.href = isIOS ? metamaskDeepLink : trustDeepLink;
+            throw new Error('No wallet found. Redirecting to wallet app...');
         }
-        // Request accounts
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts.length === 0) {
-            throw new Error('No accounts found');
-        }
-        window.wagyDog.provider = new ethers.BrowserProvider(window.ethereum);
-        window.wagyDog.signer = await window.wagyDog.provider.getSigner();
-        window.wagyDog.address = await window.wagyDog.signer.getAddress();
-        console.log("Wallet connected:", window.wagyDog.address);
+        console.log('Wallet connected:', window.wagyDog.address);
         await updateUi(window.wagyDog.address);
-        // Listeners
-        window.ethereum.on("accountsChanged", (accounts) => {
-            if (accounts.length > 0) {
-                connectWallet();
-            } else {
-                disconnectWallet();
-            }
-        });
-        window.ethereum.on("chainChanged", () => window.location.reload());
     } catch (error) {
         console.error("Could not connect to wallet:", error);
-        alert(`Connection failed: ${error.message}. Make sure MetaMask is unlocked.`);
+        const status = document.getElementById('swap-status');
+        if (status) {
+            status.classList.remove('hidden');
+            status.textContent = `Connection failed: ${error.message}`;
+        } else {
+            alert(`Connection failed: ${error.message}.`);
+        }
         disconnectWallet();
     }
 };
@@ -111,3 +171,28 @@ export const disconnectWallet = () => {
     console.log("Wallet disconnected.");
     updateUi(null);
 };
+
+export const openConnectModal = () => {
+    const modal = document.getElementById('connect-modal');
+    if (!modal) return connectWallet();
+    modal.classList.remove('hidden');
+};
+
+// Modal actions
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('connect-modal');
+    const closeBtn = document.getElementById('connect-modal-close');
+    const injectedBtn = document.getElementById('connect-injected');
+    const wcBtn = document.getElementById('connect-wc');
+    const deepLinkBtn = document.getElementById('connect-deeplink');
+    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+    if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+    if (injectedBtn) injectedBtn.addEventListener('click', async () => { modal.classList.add('hidden'); await connectWithInjected().then(() => updateUi(window.wagyDog.address)).catch(console.error); });
+    if (wcBtn) wcBtn.addEventListener('click', async () => { modal.classList.add('hidden'); await connectWithWalletConnect().then(() => updateUi(window.wagyDog.address)).catch(console.error); });
+    if (deepLinkBtn) deepLinkBtn.addEventListener('click', () => {
+        const dappUrl = encodeURIComponent(window.location.href);
+        const metamaskDeepLink = `https://metamask.app.link/dapp/${window.location.host}`;
+        const trustDeepLink = `https://link.trustwallet.com/open_url?coin_id=20000714&url=${dappUrl}`;
+        window.location.href = /iPad|iPhone|iPod/.test(navigator.userAgent) ? metamaskDeepLink : trustDeepLink;
+    });
+});

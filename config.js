@@ -1,5 +1,6 @@
 export const PROJECT_ID = 'f177ccc83d51024d30957d2135be7ac0';
 
+// NFT contract deployed on BSC Testnet
 export const CONTRACT_ADDRESS = '0x236237354Cef68d1EC34674dBD43e429AdA0d969';
 
 export const CONTRACT_ABI = [
@@ -44,24 +45,17 @@ export const CONTRACT_ABI = [
     {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
 ];
 
+// EIP-3085/EIP-3326 params for MetaMask add/switch network
 export const CHAIN_CONFIG = {
-    id: 97,
-    name: 'Binance Smart Chain Testnet',
-    nativeCurrency: {
-        name: 'Binance Coin',
-        symbol: 'BNB',
-        decimals: 18
-    },
-    rpcUrls: {
-        default: { http: ['https://data-seed-prebsc-1-s1.binance.org:8545'] },
-        public: { http: ['https://data-seed-prebsc-1-s1.binance.org:8545'] }
-    },
-    blockExplorers: {
-        default: {
-            name: 'BSCScan',
-            url: 'https://testnet.bscscan.com'
-        }
-    }
+  chainId: '0x61',
+  chainName: 'Binance Smart Chain Testnet',
+  nativeCurrency: {
+    name: 'Binance Coin',
+    symbol: 'BNB',
+    decimals: 18
+  },
+  rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545'],
+  blockExplorerUrls: ['https://testnet.bscscan.com']
 };
 
 // WBNB Testnet for swaps
@@ -88,4 +82,30 @@ export const ERC20_ABI = [
     {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
 ];
 
-export const WAGY_ADDRESS = '0x0000000000000000000000000000000000000000'; // REPLACE WITH REAL WAGY TESTNET ADDRESS
+// Known tokens on BSC Testnet
+export const TOKENS = [
+  {
+    name: 'BNB',
+    symbol: 'BNB',
+    address: WBNB_ADDRESS,
+    decimals: 18,
+    logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png'
+  },
+  {
+    name: 'PancakeSwap',
+    symbol: 'CAKE',
+    address: '0xFa60D973F7642B748046464E165A65B7323b0DEE', // CAKE testnet
+    decimals: 18,
+    logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png'
+  },
+  {
+    name: 'BUSD',
+    symbol: 'BUSD',
+    address: '0x8301F2213c0eeD49a7E28Ae4c3e91722919B8B47', // BUSD testnet
+    decimals: 18,
+    logo: 'https://cryptologos.cc/logos/busd-busd-logo.png'
+  }
+];
+
+// Optional WAGY token address if/when deployed on testnet
+export const WAGY_ADDRESS = '0x0000000000000000000000000000000000000000';
