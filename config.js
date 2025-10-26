@@ -58,9 +58,10 @@ export const CHAIN_CONFIG = {
   blockExplorerUrls: ['https://testnet.bscscan.com']
 };
 
-// WBNB Testnet for swaps
+// WBNB Testnet for swaps (properly checksummed)
 export const WBNB_ADDRESS = '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd';
 
+// PancakeSwap V2 Router on BSC Testnet (properly checksummed)
 export const ROUTER_ADDRESS = '0xD99D1c33F9fC3444f8101754aBC46c52416550D1';
 export const ROUTER_ABI = [
     {"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},
@@ -82,54 +83,52 @@ export const ERC20_ABI = [
     {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
 ];
 
-// Known tokens on BSC Testnet
+// WagyDog token - Using CAKE testnet token as placeholder for WAGY
+export const WAGY_ADDRESS = '0xFa60D973F7642B748046464E165A65B7323b0DEE';
+
+// Known tokens on BSC Testnet (all addresses properly checksummed)
 export const TOKENS = [
   {
     name: 'Wrapped BNB',
     symbol: 'WBNB',
     address: WBNB_ADDRESS,
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png',
+    logo: 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png',
     isNative: true
+  },
+  {
+    name: 'WagyDog',
+    symbol: 'WAGY',
+    address: WAGY_ADDRESS,
+    decimals: 18,
+    logo: './wagydog-logo.png'
   },
   {
     name: 'PancakeSwap Token',
     symbol: 'CAKE',
     address: '0xFa60D973F7642B748046464E165A65B7323b0DEE', // CAKE testnet
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png'
+    logo: 'https://assets.coingecko.com/coins/images/12632/small/pancakeswap-cake-logo.png'
   },
   {
     name: 'Binance USD',
     symbol: 'BUSD',
     address: '0x8301F2213c0eeD49a7E28Ae4c3e91722919B8B47', // BUSD testnet
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/busd-busd-logo.png'
+    logo: 'https://assets.coingecko.com/coins/images/9576/small/BUSD.png'
   },
   {
     name: 'Tether USD',
     symbol: 'USDT',
     address: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd', // USDT testnet
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/tether-usdt-logo.png'
+    logo: 'https://assets.coingecko.com/coins/images/325/small/Tether.png'
   },
   {
     name: 'USD Coin',
     symbol: 'USDC',
     address: '0x64544969ed7EBf5f083679233325356EbE738930', // USDC testnet
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png'
+    logo: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png'
   }
 ];
-
-// WagyDog token - for demo purposes using a testnet token
-export const WAGY_ADDRESS = '0xFa60D973F7642B748046464E165A65B7323b0DEE'; // Using CAKE as placeholder for WAGY
-
-// Add WagyDog token to the list
-TOKENS.push({
-  name: 'WagyDog',
-  symbol: 'WAGY',
-  address: WAGY_ADDRESS,
-  decimals: 18,
-  logo: './wagydog-logo.png'
-});

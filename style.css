@@ -622,3 +622,71 @@ body {
 #starfield, #starfield2 {
     z-index: 0;
 }
+
+/* === WALLET CONNECTION STYLES === */
+.wallet-option-btn {
+    transition: all 0.2s ease;
+    border: 1px solid #e5e7eb;
+}
+
+.wallet-option-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: #3b82f6;
+}
+
+.wallet-option-btn img {
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+/* Success modal animations */
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.fixed.z-50 > div {
+    animation: fadeInScale 0.3s ease-out;
+}
+
+/* Transaction status indicators */
+.transaction-pending {
+    animation: pulseTransaction 2s infinite;
+}
+
+@keyframes pulseTransaction {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Enhanced modal styles */
+.modal-overlay {
+    backdrop-filter: blur(4px);
+}
+
+/* Mobile responsive wallet options */
+@media (max-width: 768px) {
+    .wallet-option-btn {
+        padding: 1rem;
+    }
+    
+    .wallet-option-btn img {
+        width: 2rem;
+        height: 2rem;
+    }
+    
+    .wallet-option-btn div {
+        font-size: 0.875rem;
+    }
+}

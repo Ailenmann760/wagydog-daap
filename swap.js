@@ -24,9 +24,15 @@ const updateTokenDisplay = (buttonElement, token) => {
     if (logoImg) {
         logoImg.src = token.logo;
         logoImg.alt = token.name;
-        logoImg.onerror = () => { logoImg.src = 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + token.name; };
+        logoImg.style.width = '32px';
+        logoImg.style.height = '32px';
+        logoImg.style.borderRadius = '50%';
+        logoImg.style.objectFit = 'cover';
+        logoImg.onerror = () => { 
+            logoImg.src = `https://ui-avatars.com/api/?name=${token.symbol}&size=32&background=0d1117&color=ffffff&format=png&rounded=true`;
+        };
     }
-    if (nameSpan) nameSpan.textContent = token.name;
+    if (nameSpan) nameSpan.textContent = token.symbol;
     console.log(`Updated token display for ${token.name}`);
 };
 
@@ -217,10 +223,10 @@ export const performSwap = async () => {
             }
         }
         
-        // Execute swap based on token types
+        // Execute swap based on token types with proper transaction signing flow
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
-            if (swapStatus) swapStatus.textContent = 'Swapping BNB for tokens...';
+            if (swapStatus) swapStatus.textContent = 'Please sign the transaction in your wallet...';
             tx = await router.swapExactETHForTokens(
                 amountOutMin,
                 path,
@@ -237,12 +243,13 @@ export const performSwap = async () => {
             const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
             
             if (allowance < amountIn) {
-                if (swapStatus) swapStatus.textContent = 'Approving tokens...';
+                if (swapStatus) swapStatus.textContent = 'Please approve token spending in your wallet...';
                 const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: 100000 });
+                if (swapStatus) swapStatus.textContent = 'Waiting for approval confirmation...';
                 await approveTx.wait();
             }
             
-            if (swapStatus) swapStatus.textContent = 'Swapping tokens for BNB...';
+            if (swapStatus) swapStatus.textContent = 'Please sign the swap transaction in your wallet...';
             tx = await router.swapExactTokensForETH(
                 amountIn,
                 amountOutMin,
@@ -257,12 +264,13 @@ export const performSwap = async () => {
             const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
             
             if (allowance < amountIn) {
-                if (swapStatus) swapStatus.textContent = 'Approving tokens...';
+                if (swapStatus) swapStatus.textContent = 'Please approve token spending in your wallet...';
                 const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: 100000 });
+                if (swapStatus) swapStatus.textContent = 'Waiting for approval confirmation...';
                 await approveTx.wait();
             }
             
-            if (swapStatus) swapStatus.textContent = 'Swapping tokens...';
+            if (swapStatus) swapStatus.textContent = 'Please sign the swap transaction in your wallet...';
             tx = await router.swapExactTokensForTokens(
                 amountIn,
                 amountOutMin,
@@ -387,15 +395,18 @@ const searchTokens = async (query) => {
     }
     
     tokenList.innerHTML = filtered.map(t => `
-        <div class="token-item p-2 border rounded cursor-pointer hover:bg-gray-100 transition-colors" onclick="selectToken('${selectedModalType}', '${JSON.stringify(t).replace(/"/g, '&quot;')}')">
+        <div class="token-item p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors" onclick="selectToken('${selectedModalType}', '${JSON.stringify(t).replace(/"/g, '&quot;')}')">
             <div class="flex items-center">
-                <img src="${t.logo}" class="w-8 h-8 rounded mr-3" onerror="this.src='https://placehold.co/32x32/0d1117/FFFFFF?text=${t.symbol}'">
+                <img src="${t.logo}" class="w-10 h-10 rounded-full mr-3 object-cover" 
+                     style="border: 2px solid #e5e7eb;" 
+                     onerror="this.src='https://ui-avatars.com/api/?name=${t.symbol}&size=40&background=0d1117&color=ffffff&format=png&rounded=true'">
                 <div class="flex-1">
                     <div class="font-bold text-gray-900">${t.name}</div>
                     <div class="text-gray-500 text-sm">${t.symbol}</div>
                 </div>
                 ${currentPrices[t.address] ? `<div class="text-right text-sm text-gray-600">
-                    $${currentPrices[t.address].toFixed(6)}
+                    <div class="font-semibold">$${currentPrices[t.address].toFixed(6)}</div>
+                    <div class="text-xs text-gray-400">per token</div>
                 </div>` : ''}
             </div>
         </div>

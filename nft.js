@@ -380,58 +380,204 @@ window.unlistNFT = async (tokenId) => {
     }
 };
 
+// Magic Eden-style NFT purchase with proper transaction flow
 window.buyNFT = async (tokenId, priceStr) => {
     const { signer, address } = window.wagyDog.getWalletState();
     if (!signer || !address) {
-        alert('Please connect your wallet first.');
+        // Show wallet connection modal instead of alert
+        const status = document.getElementById('swap-status');
+        if (status) {
+            status.classList.remove('hidden');
+            status.style.color = '#EF4444';
+            status.textContent = 'Please connect your wallet to purchase NFTs';
+            setTimeout(() => status.classList.add('hidden'), 3000);
+        }
         connectWallet();
         return;
     }
     
-    if (!confirm(`Are you sure you want to buy this NFT for ${priceStr} BNB?`)) {
-        return;
-    }
+    // Create Magic Eden-style purchase confirmation modal
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     
-    try {
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-        
-        // Get the exact listing price from contract
-        const listingPrice = await contract.getListingPrice(tokenId);
-        if (listingPrice === 0n) {
-            alert('This NFT is no longer listed for sale.');
-            renderNfts();
-            return;
+    const nft = allNfts.find(n => n.tokenId === tokenId);
+    const nftName = nft ? nft.name : `NFT #${tokenId}`;
+    const nftImage = nft ? nft.image : 'https://placehold.co/200x200/0d1117/FFFFFF?text=NFT';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden">
+            <div class="p-6 border-b">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-gray-900">Complete Purchase</h3>
+                    <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6">
+                <div class="flex items-center space-x-4 mb-6">
+                    <img src="${nftImage}" alt="${nftName}" class="w-16 h-16 rounded-lg object-cover">
+                    <div>
+                        <h4 class="font-semibold text-gray-900">${nftName}</h4>
+                        <p class="text-gray-600">Token ID: #${tokenId}</p>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-600">Item Price</span>
+                        <span class="font-semibold">${priceStr} BNB</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-600">Est. Gas Fee</span>
+                        <span class="font-semibold">~0.001 BNB</span>
+                    </div>
+                    <hr class="my-2">
+                    <div class="flex justify-between items-center font-bold">
+                        <span>Total</span>
+                        <span>~${(parseFloat(priceStr) + 0.001).toFixed(3)} BNB</span>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="flex items-center space-x-2 text-sm text-gray-600">
+                        <i class="fas fa-shield-alt text-green-500"></i>
+                        <span>Secure transaction on BSC Testnet</span>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button onclick="this.closest('.fixed').remove()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="confirm-purchase-btn" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-wallet mr-2"></i>Confirm Purchase
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Handle purchase confirmation
+    const confirmBtn = modal.querySelector('#confirm-purchase-btn');
+    confirmBtn.addEventListener('click', async () => {
+        try {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            
+            const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+            
+            // Get the exact listing price from contract
+            const listingPrice = await contract.getListingPrice(tokenId);
+            if (listingPrice === 0n) {
+                throw new Error('This NFT is no longer listed for sale.');
+            }
+            
+            // Check user balance
+            const balance = await signer.getBalance();
+            const gasEstimate = 300000n * 20000000000n; // Rough gas estimate
+            if (balance < listingPrice + gasEstimate) {
+                throw new Error('Insufficient BNB balance for this purchase.');
+            }
+            
+            // Update UI to show transaction signing
+            confirmBtn.innerHTML = '<i class="fas fa-signature mr-2"></i>Sign Transaction...';
+            
+            // Execute purchase transaction
+            const tx = await contract.buyNFT(tokenId, { 
+                value: listingPrice, 
+                gasLimit: 300000 
+            });
+            
+            // Update UI to show transaction pending
+            confirmBtn.innerHTML = '<i class="fas fa-clock mr-2"></i>Transaction Pending...';
+            
+            // Wait for transaction confirmation
+            const receipt = await tx.wait();
+            
+            // Close modal and show success
+            modal.remove();
+            
+            // Show success modal
+            showSuccessModal({
+                title: 'Purchase Successful!',
+                message: `You successfully purchased ${nftName} for ${ethers.formatEther(listingPrice)} BNB`,
+                txHash: receipt.hash,
+                action: () => renderNfts()
+            });
+            
+        } catch (error) {
+            console.error('Purchase failed:', error);
+            
+            let errorMessage = error.message;
+            if (error.code === 4001) {
+                errorMessage = 'Transaction rejected by user';
+            } else if (error.message.includes('insufficient funds')) {
+                errorMessage = 'Insufficient funds for this purchase';
+            } else if (error.message.includes('execution reverted')) {
+                errorMessage = 'Transaction failed - NFT may no longer be available';
+            }
+            
+            // Show error in modal
+            confirmBtn.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i>Error: ${errorMessage}`;
+            confirmBtn.disabled = false;
+            
+            setTimeout(() => {
+                confirmBtn.innerHTML = '<i class="fas fa-wallet mr-2"></i>Retry Purchase';
+            }, 3000);
         }
-        
-        // Check user balance
-        const balance = await signer.getBalance();
-        const gasEstimate = 300000n * 20000000000n; // Rough gas estimate
-        if (balance < listingPrice + gasEstimate) {
-            alert('Insufficient BNB balance for this purchase.');
-            return;
+    });
+};
+
+// Success modal for transactions
+const showSuccessModal = ({ title, message, txHash, action }) => {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-check text-2xl text-green-600"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">${title}</h3>
+                <p class="text-gray-600 mb-6">${message}</p>
+                
+                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-600">Transaction Hash:</span>
+                        <a href="https://testnet.bscscan.com/tx/${txHash}" target="_blank" class="text-blue-600 hover:text-blue-800 font-mono">
+                            ${txHash.substring(0, 6)}...${txHash.substring(txHash.length - 4)}
+                            <i class="fas fa-external-link-alt ml-1"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button onclick="window.open('https://testnet.bscscan.com/tx/${txHash}', '_blank')" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-external-link-alt mr-2"></i>View on BSCScan
+                    </button>
+                    <button onclick="this.closest('.fixed').remove(); ${action ? 'action()' : ''}" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Auto-close after 10 seconds
+    setTimeout(() => {
+        if (document.body.contains(modal)) {
+            modal.remove();
+            if (action) action();
         }
-        
-        const tx = await contract.buyNFT(tokenId, { 
-            value: listingPrice, 
-            gasLimit: 300000 
-        });
-        
-        alert(`Purchasing NFT #${tokenId} for ${ethers.formatEther(listingPrice)} BNB...\nTransaction: ${tx.hash}`);
-        
-        const receipt = await tx.wait();
-        alert(`NFT #${tokenId} purchased successfully!\nTransaction: ${receipt.hash}\nView on BSCScan: https://testnet.bscscan.com/tx/${receipt.hash}`);
-        
-        renderNfts();
-    } catch (error) {
-        console.error('Purchase failed:', error);
-        let errorMessage = error.message;
-        if (error.message.includes('user rejected')) {
-            errorMessage = 'Transaction rejected by user';
-        } else if (error.message.includes('insufficient funds')) {
-            errorMessage = 'Insufficient funds for this purchase';
-        }
-        alert(`Purchase failed: ${errorMessage}`);
-    }
+    }, 10000);
 };
 
 // NFT Detail Modal

@@ -167,7 +167,7 @@ export const connectWallet = async () => {
     try {
         console.log('Attempting to connect wallet...');
         
-        // Check if we're in a mobile DApp browser
+        // Check if we're in a mobile DApp browser with wallet already injected
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         const isDAppBrowser = window.ethereum && (
             window.ethereum.isMetaMask || 
@@ -177,33 +177,33 @@ export const connectWallet = async () => {
             window.ethereum.isBinance
         );
 
-        if (window.ethereum) {
-            console.log('Using injected wallet');
+        // If we have an injected wallet and we're in a DApp browser, connect directly
+        if (window.ethereum && isDAppBrowser) {
+            console.log('Using injected wallet in DApp browser');
             await connectWithInjected();
-        } else if (isMobile && !isDAppBrowser) {
-            // Mobile without wallet - show connection modal
+            
+            console.log('Wallet connected successfully:', window.wagyDog.address);
+            await updateUi(window.wagyDog.address);
+            
+            // Dispatch wallet connected event
+            window.dispatchEvent(new CustomEvent('walletConnected', { 
+                detail: { address: window.wagyDog.address } 
+            }));
+            
+            // Show success message
+            const status = document.getElementById('swap-status');
+            if (status) {
+                status.classList.remove('hidden');
+                status.style.color = '#10B981';
+                status.textContent = 'Wallet connected successfully!';
+                setTimeout(() => status.classList.add('hidden'), 3000);
+            }
+            
+        } else {
+            // Show wallet selection modal for all other cases
+            console.log('Opening wallet selection modal');
             openConnectModal();
             return;
-        } else {
-            // Desktop without wallet
-            throw new Error('No wallet found. Please install MetaMask or another Web3 wallet.');
-        }
-        
-        console.log('Wallet connected successfully:', window.wagyDog.address);
-        await updateUi(window.wagyDog.address);
-        
-        // Dispatch wallet connected event
-        window.dispatchEvent(new CustomEvent('walletConnected', { 
-            detail: { address: window.wagyDog.address } 
-        }));
-        
-        // Show success message
-        const status = document.getElementById('swap-status');
-        if (status) {
-            status.classList.remove('hidden');
-            status.style.color = '#10B981';
-            status.textContent = 'Wallet connected successfully!';
-            setTimeout(() => status.classList.add('hidden'), 3000);
         }
         
     } catch (error) {
@@ -251,68 +251,188 @@ export const openConnectModal = () => {
     modal.classList.remove('hidden');
 };
 
+// Wallet-specific connection functions
+const connectSpecificWallet = async (walletType) => {
+    const modal = document.getElementById('connect-modal');
+    modal?.classList.add('hidden');
+    
+    try {
+        switch (walletType) {
+            case 'metamask':
+                if (window.ethereum?.isMetaMask) {
+                    await connectWithInjected();
+                } else {
+                    throw new Error('MetaMask not detected. Please install MetaMask extension.');
+                }
+                break;
+                
+            case 'trust':
+                if (window.ethereum?.isTrust) {
+                    await connectWithInjected();
+                } else if (window.ethereum) {
+                    // Try generic connection if Trust Wallet not specifically detected
+                    await connectWithInjected();
+                } else {
+                    throw new Error('Trust Wallet not detected. Please install Trust Wallet.');
+                }
+                break;
+                
+            case 'coinbase':
+                if (window.ethereum?.isCoinbaseWallet) {
+                    await connectWithInjected();
+                } else {
+                    throw new Error('Coinbase Wallet not detected. Please install Coinbase Wallet.');
+                }
+                break;
+                
+            case 'okx':
+                if (window.okxwallet) {
+                    // OKX Wallet specific connection
+                    await connectWithInjected();
+                } else {
+                    throw new Error('OKX Wallet not detected. Please install OKX Wallet.');
+                }
+                break;
+                
+            case 'phantom':
+                if (window.phantom?.ethereum) {
+                    // Phantom supports Ethereum now
+                    window.ethereum = window.phantom.ethereum;
+                    await connectWithInjected();
+                } else {
+                    throw new Error('Phantom Wallet not detected or does not support Ethereum.');
+                }
+                break;
+                
+            case 'solflare':
+                throw new Error('Solflare primarily supports Solana. Please use an Ethereum-compatible wallet for BSC.');
+                
+            default:
+                await connectWithInjected();
+        }
+        
+        await updateUi(window.wagyDog.address);
+        
+        // Dispatch wallet connected event
+        window.dispatchEvent(new CustomEvent('walletConnected', { 
+            detail: { address: window.wagyDog.address, walletType } 
+        }));
+        
+    } catch (error) {
+        console.error(`${walletType} wallet connection failed:`, error);
+        
+        // Show user-friendly error
+        const status = document.getElementById('swap-status');
+        if (status) {
+            status.classList.remove('hidden');
+            status.style.color = '#EF4444';
+            status.textContent = `${walletType} connection failed: ${error.message}`;
+            setTimeout(() => status.classList.add('hidden'), 5000);
+        }
+        
+        if (error.code !== 4001) {
+            alert(`${walletType} connection failed: ${error.message}`);
+        }
+    }
+};
+
 // Modal actions
 document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('connect-modal');
     const closeBtn = document.getElementById('connect-modal-close');
-    const injectedBtn = document.getElementById('connect-injected');
-    const wcBtn = document.getElementById('connect-wc');
-    const deepLinkBtn = document.getElementById('connect-deeplink');
     
+    // Close modal handlers
     if (closeBtn) closeBtn.addEventListener('click', () => modal?.classList.add('hidden'));
     if (modal) modal.addEventListener('click', (e) => { 
         if (e.target === modal) modal.classList.add('hidden'); 
     });
     
-    if (injectedBtn) injectedBtn.addEventListener('click', async () => { 
-        modal?.classList.add('hidden'); 
-        try {
-            await connectWithInjected();
-            await updateUi(window.wagyDog.address);
-        } catch (error) {
-            console.error('Injected wallet connection failed:', error);
-            alert(`Connection failed: ${error.message}`);
+    // Individual wallet connection handlers
+    const walletButtons = [
+        { id: 'connect-metamask', type: 'metamask' },
+        { id: 'connect-trust', type: 'trust' },
+        { id: 'connect-coinbase', type: 'coinbase' },
+        { id: 'connect-okx', type: 'okx' },
+        { id: 'connect-phantom', type: 'phantom' },
+        { id: 'connect-solflare', type: 'solflare' }
+    ];
+    
+    walletButtons.forEach(({ id, type }) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.addEventListener('click', () => connectSpecificWallet(type));
         }
     });
     
+    // WalletConnect handler
+    const wcBtn = document.getElementById('connect-wc');
     if (wcBtn) wcBtn.addEventListener('click', async () => { 
         modal?.classList.add('hidden'); 
         try {
             await connectWithWalletConnect();
             await updateUi(window.wagyDog.address);
+            
+            window.dispatchEvent(new CustomEvent('walletConnected', { 
+                detail: { address: window.wagyDog.address, walletType: 'walletconnect' } 
+            }));
         } catch (error) {
             console.error('WalletConnect connection failed:', error);
-            alert(`WalletConnect failed: ${error.message}`);
+            
+            const status = document.getElementById('swap-status');
+            if (status) {
+                status.classList.remove('hidden');
+                status.style.color = '#EF4444';
+                status.textContent = `WalletConnect failed: ${error.message}`;
+                setTimeout(() => status.classList.add('hidden'), 5000);
+            }
+            
+            if (error.code !== 4001) {
+                alert(`WalletConnect failed: ${error.message}`);
+            }
         }
     });
     
+    // Deep link handler for mobile wallets
+    const deepLinkBtn = document.getElementById('connect-deeplink');
     if (deepLinkBtn) deepLinkBtn.addEventListener('click', () => {
+        modal?.classList.add('hidden');
+        
         const currentUrl = window.location.href;
         const dappUrl = encodeURIComponent(currentUrl);
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         const isAndroid = /Android/i.test(navigator.userAgent);
         
         if (isIOS) {
-            // iOS deep links
-            const metamaskDeepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
-            const trustDeepLink = `https://link.trustwallet.com/open_url?coin_id=20000714&url=${dappUrl}`;
+            // iOS deep links for multiple wallets
+            const walletLinks = [
+                `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`,
+                `https://link.trustwallet.com/open_url?coin_id=20000714&url=${dappUrl}`,
+                `https://go.cb-w.com/dapp?cb_url=${dappUrl}`
+            ];
             
-            // Try MetaMask first, fallback to Trust Wallet
-            window.location.href = metamaskDeepLink;
-            setTimeout(() => {
-                window.location.href = trustDeepLink;
-            }, 1000);
+            // Try each wallet with delays
+            walletLinks.forEach((link, index) => {
+                setTimeout(() => {
+                    window.location.href = link;
+                }, index * 1500);
+            });
+            
         } else if (isAndroid) {
-            // Android deep links
-            const metamaskIntent = `intent://dapp/${window.location.host}${window.location.pathname}#Intent;scheme=https;package=io.metamask;end`;
-            const trustIntent = `intent://${window.location.host}${window.location.pathname}#Intent;scheme=https;package=com.wallet.crypto.trustapp;end`;
+            // Android intents for multiple wallets
+            const walletIntents = [
+                `intent://dapp/${window.location.host}${window.location.pathname}#Intent;scheme=https;package=io.metamask;end`,
+                `intent://${window.location.host}${window.location.pathname}#Intent;scheme=https;package=com.wallet.crypto.trustapp;end`,
+                `intent://${window.location.host}${window.location.pathname}#Intent;scheme=https;package=org.toshi;end`
+            ];
             
-            window.location.href = metamaskIntent;
-            setTimeout(() => {
-                window.location.href = trustIntent;
-            }, 1000);
+            walletIntents.forEach((intent, index) => {
+                setTimeout(() => {
+                    window.location.href = intent;
+                }, index * 1500);
+            });
+            
         } else {
-            alert('Please install MetaMask or Trust Wallet on your mobile device');
+            alert('Please install a mobile wallet app (MetaMask, Trust Wallet, Coinbase Wallet) on your mobile device');
         }
     });
 });
