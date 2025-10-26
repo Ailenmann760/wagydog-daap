@@ -15,6 +15,8 @@
     <script src="https://unpkg.com/ipfs-http-client@60.0.0/dist/index.min.js"></script>
     <!-- Ethers -->
     <script src="https://unpkg.com/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+    <!-- WalletConnect v2 Provider (UMD) -->
+    <script src="https://unpkg.com/@walletconnect/ethereum-provider@2/dist/index.umd.min.js"></script>
 </head>
 <body class="relative">
     <header class="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md shadow-lg border-b border-white/10">
@@ -247,8 +249,16 @@
                     <button id="connect-modal-close" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="p-6 space-y-3">
-                    <button id="connect-injected" class="btn-primary w-full flex items-center justify-center"><i class="fa-brands fa-ethereum mr-2"></i> Browser Wallet (MetaMask/Trust)</button>
-                    <button id="connect-wc" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-qrcode mr-2"></i> WalletConnect</button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="connect-metamask" class="btn-primary w-full flex items-center justify-center"><i class="fa-solid fa-fox mr-2"></i> MetaMask</button>
+                        <button id="connect-trust" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-shield-dog mr-2"></i> Trust Wallet</button>
+                        <button id="connect-coinbase" class="btn-secondary w-full flex items-center justify-center"><i class="fa-brands fa-coinbase mr-2"></i> Coinbase</button>
+                        <button id="connect-okx" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-circle-nodes mr-2"></i> OKX Wallet</button>
+                        <button id="connect-phantom" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-ghost mr-2"></i> Phantom</button>
+                        <button id="connect-solflare" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-fire-flame-curved mr-2"></i> Solflare</button>
+                    </div>
+                    <button id="connect-wc" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-qrcode mr-2"></i> WalletConnect (More Wallets)</button>
+                    <button id="connect-injected" class="btn-secondary w-full flex items-center justify-center"><i class="fa-brands fa-ethereum mr-2"></i> Browser Wallet (Auto)</button>
                     <button id="connect-deeplink" class="btn-secondary w-full flex items-center justify-center"><i class="fa-solid fa-mobile-screen-button mr-2"></i> Open in Wallet App</button>
                     <p class="text-xs text-gray-500 text-center">BSC Testnet is required. We will help switch networks.</p>
                 </div>

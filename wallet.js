@@ -258,13 +258,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const injectedBtn = document.getElementById('connect-injected');
     const wcBtn = document.getElementById('connect-wc');
     const deepLinkBtn = document.getElementById('connect-deeplink');
+
+    // Specific wallet buttons (all route to injected or WalletConnect as appropriate)
+    const btnMetaMask = document.getElementById('connect-metamask');
+    const btnTrust = document.getElementById('connect-trust');
+    const btnCoinbase = document.getElementById('connect-coinbase');
+    const btnOkx = document.getElementById('connect-okx');
+    const btnPhantom = document.getElementById('connect-phantom');
+    const btnSolflare = document.getElementById('connect-solflare');
     
     if (closeBtn) closeBtn.addEventListener('click', () => modal?.classList.add('hidden'));
     if (modal) modal.addEventListener('click', (e) => { 
         if (e.target === modal) modal.classList.add('hidden'); 
     });
     
-    if (injectedBtn) injectedBtn.addEventListener('click', async () => { 
+    const connectViaInjected = async () => {
         modal?.classList.add('hidden'); 
         try {
             await connectWithInjected();
@@ -273,7 +281,35 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Injected wallet connection failed:', error);
             alert(`Connection failed: ${error.message}`);
         }
+    };
+
+    if (injectedBtn) injectedBtn.addEventListener('click', connectViaInjected);
+    if (btnMetaMask) btnMetaMask.addEventListener('click', connectViaInjected);
+    if (btnTrust) btnTrust.addEventListener('click', connectViaInjected);
+    if (btnCoinbase) btnCoinbase.addEventListener('click', async () => {
+        // Many Coinbase users rely on WalletConnect on web
+        modal?.classList.add('hidden');
+        try {
+            await connectWithWalletConnect();
+            await updateUi(window.wagyDog.address);
+        } catch (error) {
+            console.error('Coinbase (WC) connection failed:', error);
+            alert(`Connection failed: ${error.message}`);
+        }
     });
+    if (btnOkx) btnOkx.addEventListener('click', async () => {
+        modal?.classList.add('hidden');
+        try {
+            await connectWithWalletConnect();
+            await updateUi(window.wagyDog.address);
+        } catch (error) {
+            console.error('OKX (WC) connection failed:', error);
+            alert(`Connection failed: ${error.message}`);
+        }
+    });
+    // Phantom/Solflare are Solana wallets; for this EVM dApp we open deep link to instruct
+    if (btnPhantom) btnPhantom.addEventListener('click', () => deepLinkBtn?.click());
+    if (btnSolflare) btnSolflare.addEventListener('click', () => deepLinkBtn?.click());
     
     if (wcBtn) wcBtn.addEventListener('click', async () => { 
         modal?.classList.add('hidden'); 

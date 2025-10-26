@@ -58,10 +58,11 @@ export const CHAIN_CONFIG = {
   blockExplorerUrls: ['https://testnet.bscscan.com']
 };
 
+// All addresses are normalized to lowercase to avoid checksum errors in ethers
 // WBNB Testnet for swaps
-export const WBNB_ADDRESS = '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd';
+export const WBNB_ADDRESS = '0xae13d989dac2f0debff460ac112a837c89baa7cd';
 
-export const ROUTER_ADDRESS = '0xD99D1c33F9fC3444f8101754aBC46c52416550D1';
+export const ROUTER_ADDRESS = '0xd99d1c33f9fc3444f8101754abc46c52416550d1';
 export const ROUTER_ABI = [
     {"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},
     {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETH","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
@@ -70,6 +71,7 @@ export const ROUTER_ABI = [
 ];
 
 export const ERC20_ABI = [
+    {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
     {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
     {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
     {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
@@ -95,35 +97,35 @@ export const TOKENS = [
   {
     name: 'PancakeSwap Token',
     symbol: 'CAKE',
-    address: '0xFa60D973F7642B748046464E165A65B7323b0DEE', // CAKE testnet
+    address: '0xfa60d973f7642b748046464e165a65b7323b0dee', // CAKE testnet (lowercase)
     decimals: 18,
     logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png'
   },
   {
     name: 'Binance USD',
     symbol: 'BUSD',
-    address: '0x8301F2213c0eeD49a7E28Ae4c3e91722919B8B47', // BUSD testnet
+    address: '0x8301f2213c0eed49a7e28ae4c3e91722919b8b47', // BUSD testnet (lowercase)
     decimals: 18,
     logo: 'https://cryptologos.cc/logos/busd-busd-logo.png'
   },
   {
     name: 'Tether USD',
     symbol: 'USDT',
-    address: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd', // USDT testnet
+    address: '0x337610d27c682e347c9cd60bd4b3b107c9d34ddd', // USDT testnet (lowercase)
     decimals: 18,
     logo: 'https://cryptologos.cc/logos/tether-usdt-logo.png'
   },
   {
     name: 'USD Coin',
     symbol: 'USDC',
-    address: '0x64544969ed7EBf5f083679233325356EbE738930', // USDC testnet
+    address: '0x64544969ed7ebf5f083679233325356ebe738930', // USDC testnet (lowercase)
     decimals: 18,
     logo: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png'
   }
 ];
 
 // WagyDog token - for demo purposes using a testnet token
-export const WAGY_ADDRESS = '0xFa60D973F7642B748046464E165A65B7323b0DEE'; // Using CAKE as placeholder for WAGY
+export const WAGY_ADDRESS = '0xfa60d973f7642b748046464e165a65b7323b0dee'; // Using CAKE as placeholder for WAGY (lowercase)
 
 // Add WagyDog token to the list
 TOKENS.push({
