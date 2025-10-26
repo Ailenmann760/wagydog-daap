@@ -1,5 +1,5 @@
 import { initStarfields } from './utils.js';
-import { connectWallet, disconnectWallet } from './wallet.js';
+import { connectWallet, disconnectWallet, openConnectModal } from './wallet.js';
 import { renderNfts } from './nft.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Connect button clicked:', btn.id);
             e.preventDefault();
             e.stopPropagation();
-            connectWallet();
+            openConnectModal();
         });
     });
 

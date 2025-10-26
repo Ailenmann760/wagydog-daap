@@ -17,6 +17,16 @@ let toToken = TOKENS.find(t => t.symbol === 'WAGY') || TOKENS[TOKENS.length - 1]
 let currentPrices = {};
 let priceUpdateInterval;
 
+// Ensure addresses are valid and normalized to avoid checksum errors
+const normalizeAddress = (addr) => {
+    try {
+        return ethers.getAddress(addr);
+    } catch (e) {
+        // Fallback to lowercase to bypass checksum validation in arrays
+        return String(addr).toLowerCase();
+    }
+};
+
 const updateTokenDisplay = (buttonElement, token) => {
     if (!buttonElement) return;
     const logoImg = buttonElement.querySelector('.token-logo');
@@ -46,14 +56,14 @@ const fetchTokenPrices = async () => {
     if (!window.wagyDog.provider) return;
     
     try {
-        const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, window.wagyDog.provider);
+        const router = new ethers.Contract(normalizeAddress(ROUTER_ADDRESS), ROUTER_ABI, window.wagyDog.provider);
         
         // Update prices for all token pairs
         for (const token of TOKENS) {
             if (token.isNative) continue;
             
             try {
-                const path = [WBNB_ADDRESS, token.address];
+                const path = [normalizeAddress(WBNB_ADDRESS), normalizeAddress(token.address)];
                 const amountIn = ethers.parseEther('1'); // 1 BNB
                 const amountsOut = await router.getAmountsOut(amountIn, path);
                 const price = parseFloat(ethers.formatUnits(amountsOut[1], token.decimals));
@@ -96,21 +106,21 @@ const calculateOutputAmount = async (inputAmount) => {
     if (!window.wagyDog.provider || !inputAmount || inputAmount <= 0) return 0;
     
     try {
-        const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, window.wagyDog.provider);
+        const router = new ethers.Contract(normalizeAddress(ROUTER_ADDRESS), ROUTER_ABI, window.wagyDog.provider);
         let path = [];
         let amountIn;
         
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
-            path = [WBNB_ADDRESS, toToken.address];
+            path = [normalizeAddress(WBNB_ADDRESS), normalizeAddress(toToken.address)];
             amountIn = ethers.parseEther(inputAmount.toString());
         } else if (!fromToken.isNative && toToken.isNative) {
             // Token to BNB
-            path = [fromToken.address, WBNB_ADDRESS];
+            path = [normalizeAddress(fromToken.address), normalizeAddress(WBNB_ADDRESS)];
             amountIn = ethers.parseUnits(inputAmount.toString(), fromToken.decimals);
         } else if (!fromToken.isNative && !toToken.isNative) {
             // Token to Token (via BNB)
-            path = [fromToken.address, WBNB_ADDRESS, toToken.address];
+            path = [normalizeAddress(fromToken.address), normalizeAddress(WBNB_ADDRESS), normalizeAddress(toToken.address)];
             amountIn = ethers.parseUnits(inputAmount.toString(), fromToken.decimals);
         } else {
             // BNB to BNB (shouldn't happen)
@@ -172,7 +182,7 @@ export const performSwap = async () => {
             swapStatus.textContent = 'Preparing swap...';
         }
         
-        const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
+        const router = new ethers.Contract(normalizeAddress(ROUTER_ADDRESS), ROUTER_ABI, signer);
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
         
         let path = [];
@@ -182,15 +192,15 @@ export const performSwap = async () => {
         // Determine swap path and amount
         if (fromToken.isNative && !toToken.isNative) {
             // BNB to Token
-            path = [WBNB_ADDRESS, toToken.address];
+            path = [normalizeAddress(WBNB_ADDRESS), normalizeAddress(toToken.address)];
             amountIn = ethers.parseEther(fromAmount.toString());
         } else if (!fromToken.isNative && toToken.isNative) {
             // Token to BNB
-            path = [fromToken.address, WBNB_ADDRESS];
+            path = [normalizeAddress(fromToken.address), normalizeAddress(WBNB_ADDRESS)];
             amountIn = ethers.parseUnits(fromAmount.toString(), fromToken.decimals);
         } else if (!fromToken.isNative && !toToken.isNative) {
             // Token to Token (via BNB)
-            path = [fromToken.address, WBNB_ADDRESS, toToken.address];
+            path = [normalizeAddress(fromToken.address), normalizeAddress(WBNB_ADDRESS), normalizeAddress(toToken.address)];
             amountIn = ethers.parseUnits(fromAmount.toString(), fromToken.decimals);
         } else {
             throw new Error('Invalid token pair selected');
@@ -210,7 +220,7 @@ export const performSwap = async () => {
                 throw new Error(`Insufficient ${fromToken.symbol} balance`);
             }
         } else {
-            const tokenContract = new ethers.Contract(fromToken.address, ERC20_ABI, signer);
+            const tokenContract = new ethers.Contract(normalizeAddress(fromToken.address), ERC20_ABI, signer);
             const balance = await tokenContract.balanceOf(address);
             if (balance < amountIn) {
                 throw new Error(`Insufficient ${fromToken.symbol} balance`);
@@ -233,7 +243,7 @@ export const performSwap = async () => {
             );
         } else if (!fromToken.isNative && toToken.isNative) {
             // Token to BNB - need approval first
-            const tokenContract = new ethers.Contract(fromToken.address, ERC20_ABI, signer);
+            const tokenContract = new ethers.Contract(normalizeAddress(fromToken.address), ERC20_ABI, signer);
             const allowance = await tokenContract.allowance(address, ROUTER_ADDRESS);
             
             if (allowance < amountIn) {
@@ -342,14 +352,15 @@ const closeModal = () => {
 
 const fetchTokenByAddress = async (address) => {
     if (!window.wagyDog.provider) return null;
-    const contract = new ethers.Contract(address, ERC20_ABI, window.wagyDog.provider);
+    const normalized = normalizeAddress(address);
+    const contract = new ethers.Contract(normalized, ERC20_ABI, window.wagyDog.provider);
     try {
         const [name, symbol, decimals] = await Promise.all([
             contract.name(),
             contract.symbol(),
             contract.decimals()
         ]);
-        return { name: await name, symbol: await symbol, address, decimals: Number(await decimals), logo: 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + (await symbol) };
+        return { name: await name, symbol: await symbol, address: normalized, decimals: Number(await decimals), logo: 'https://placehold.co/48x48/0d1117/FFFFFF?text=' + (await symbol) };
     } catch (error) {
         console.error('Invalid token address');
         return null;
@@ -357,7 +368,7 @@ const fetchTokenByAddress = async (address) => {
 };
 
 const searchTokens = async (query) => {
-    if (query.startsWith('0x') && query.length === 42) {
+    if (ethers.isAddress(query)) {
         const token = await fetchTokenByAddress(query);
         if (token) {
             tokenList.innerHTML = `<div class="token-item p-2 border rounded cursor-pointer hover:bg-gray-100" onclick="selectToken('${selectedModalType}', '${JSON.stringify(token).replace(/"/g, '&quot;')}')">

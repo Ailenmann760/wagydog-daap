@@ -258,6 +258,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const injectedBtn = document.getElementById('connect-injected');
     const wcBtn = document.getElementById('connect-wc');
     const deepLinkBtn = document.getElementById('connect-deeplink');
+
+    // New explicit wallet buttons map to injected/walletconnect flows
+    const explicitButtons = [
+        'connect-metamask',
+        'connect-trust',
+        'connect-coinbase',
+        'connect-okx'
+    ];
+    explicitButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', async () => {
+            modal?.classList.add('hidden');
+            try {
+                await connectWithInjected();
+                await updateUi(window.wagyDog.address);
+            } catch (error) {
+                console.error('Injected wallet connection failed:', error);
+                alert(`Connection failed: ${error.message}`);
+            }
+        });
+    });
+    // Solana wallets will be routed via WalletConnect for now (UI only)
+    const solButtons = ['connect-phantom', 'connect-solflare'];
+    solButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', async () => {
+            modal?.classList.add('hidden');
+            try {
+                await connectWithWalletConnect();
+                await updateUi(window.wagyDog.address);
+            } catch (error) {
+                console.error('WalletConnect connection failed:', error);
+                alert(`WalletConnect failed: ${error.message}`);
+            }
+        });
+    });
     
     if (closeBtn) closeBtn.addEventListener('click', () => modal?.classList.add('hidden'));
     if (modal) modal.addEventListener('click', (e) => { 

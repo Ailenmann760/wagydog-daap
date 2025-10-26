@@ -24,7 +24,8 @@ const dummyNfts = [
         price: '0.1', 
         image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        fromContract: false,
         tokenId: 1
     },
     { 
@@ -35,7 +36,8 @@ const dummyNfts = [
         price: '0.25', 
         image: 'https://images.pexels.com/photos/1665241/pexels-photo-1665241.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        fromContract: false,
         tokenId: 2
     },
     { 
@@ -46,7 +48,8 @@ const dummyNfts = [
         price: '0.5', 
         image: 'https://images.pexels.com/photos/4587993/pexels-photo-4587993.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        fromContract: false,
         tokenId: 3
     },
     { 
@@ -57,7 +60,8 @@ const dummyNfts = [
         price: '0.15', 
         image: 'https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        fromContract: false,
         tokenId: 4
     },
     { 
@@ -68,7 +72,8 @@ const dummyNfts = [
         price: '1.0', 
         image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=600',
         owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
+        isListed: false,
+        fromContract: false,
         tokenId: 5
     }
 ];
@@ -76,7 +81,7 @@ const dummyNfts = [
 const createNftCard = (nft) => {
     const { address } = window.wagyDog.getWalletState();
     const isOwner = address && nft.owner && nft.owner.toLowerCase() === address.toLowerCase();
-    const canBuy = address && !isOwner && nft.isListed;
+    const canBuy = address && !isOwner && nft.isListed && nft.fromContract;
     const canList = address && isOwner && !nft.isListed;
     const canUnlist = address && isOwner && nft.isListed;
     
@@ -153,7 +158,8 @@ const fetchNftsFromContract = async () => {
                     artist: 'WagyDog Community',
                     owner: owner,
                     price: isListed ? ethers.formatEther(listingPrice) : '0',
-                    isListed: isListed
+                    isListed: isListed,
+                    fromContract: true
                 });
             } catch (error) {
                 console.warn(`Failed to fetch NFT ${i}:`, error);
@@ -246,7 +252,7 @@ document.getElementById('artwork-upload').addEventListener('change', (e) => {
     }
 });
 
-async function uploadAndMintNFT() {
+export async function uploadAndMintNFT() {
     const { signer, address } = window.wagyDog.getWalletState();
     if (!signer || !address) {
         alert('Connect wallet first.');
@@ -388,6 +394,13 @@ window.buyNFT = async (tokenId, priceStr) => {
         return;
     }
     
+    // Ensure tokenId refers to an on-chain NFT; prevent dummy purchases
+    const nft = allNfts.find(n => n.tokenId === tokenId);
+    if (!nft || !nft.fromContract) {
+        alert('This item is for display only. Please select a listed on-chain NFT.');
+        return;
+    }
+
     if (!confirm(`Are you sure you want to buy this NFT for ${priceStr} BNB?`)) {
         return;
     }
@@ -521,7 +534,7 @@ export const mintNFT = async () => {
         mintBtn.disabled = true;
         mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
         const defaultUri = 'https://placehold.co/250x250/0d1117/FFFFFF?text=WagyDog';
-        const tx = await contract.mint(address, { value: mintPrice, gasLimit: 300000 });
+        const tx = await contract.safeMint(address, defaultUri, { value: mintPrice, gasLimit: 300000 });
         await tx.wait();
         alert('Mint successful! Check your wallet.');
         renderNfts();
