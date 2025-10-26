@@ -9,69 +9,11 @@ const uploadMintBtn = document.getElementById('upload-mint-btn');
 const { create } = window.IpfsHttpClient;
 const ipfs = create({ url: 'https://ipfs.infura.io:5001/api/v0' });
 
-// NFT marketplace state
+// NFT marketplace state (live only)
 let allNfts = [];
 let userNfts = [];
 let listedNfts = [];
 let currentFilter = 'all'; // 'all', 'owned', 'listed'
-
-const dummyNfts = [
-    { 
-        id: 1, 
-        name: 'Cosmic Wagy', 
-        description: 'A mystical WagyDog floating through the cosmos', 
-        artist: 'Galaxy Paws', 
-        price: '0.1', 
-        image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=600',
-        owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
-        tokenId: 1
-    },
-    { 
-        id: 2, 
-        name: 'Nebula Pup', 
-        description: 'Young WagyDog exploring distant nebulae', 
-        artist: 'Starlight Studio', 
-        price: '0.25', 
-        image: 'https://images.pexels.com/photos/1665241/pexels-photo-1665241.jpeg?auto=compress&cs=tinysrgb&w=600',
-        owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
-        tokenId: 2
-    },
-    { 
-        id: 3, 
-        name: 'Star Chaser', 
-        description: 'Elite WagyDog racing between stars', 
-        artist: 'Andromeda Art', 
-        price: '0.5', 
-        image: 'https://images.pexels.com/photos/4587993/pexels-photo-4587993.jpeg?auto=compress&cs=tinysrgb&w=600',
-        owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
-        tokenId: 3
-    },
-    { 
-        id: 4, 
-        name: 'Moon Walker', 
-        description: 'WagyDog taking its first steps on the lunar surface', 
-        artist: 'Lunar Labs', 
-        price: '0.15', 
-        image: 'https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=600',
-        owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
-        tokenId: 4
-    },
-    { 
-        id: 5, 
-        name: 'Galaxy Guardian', 
-        description: 'Legendary WagyDog protecting the galaxy', 
-        artist: 'Cosmic Creators', 
-        price: '1.0', 
-        image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=600',
-        owner: '0x0000000000000000000000000000000000000000',
-        isListed: true,
-        tokenId: 5
-    }
-];
 
 const createNftCard = (nft) => {
     const { address } = window.wagyDog.getWalletState();
@@ -193,11 +135,9 @@ export const renderNfts = async () => {
     nftGallery.innerHTML = '<div class="col-span-full text-center text-white">Loading NFTs...</div>';
     
     try {
-        // Fetch real NFTs from contract
+        // Fetch live NFTs from contract only
         const contractNfts = await fetchNftsFromContract();
-        
-        // Combine with dummy NFTs for demo purposes
-        allNfts = [...dummyNfts, ...contractNfts];
+        allNfts = [...contractNfts];
         
         // Apply current filter
         const filteredNfts = getFilteredNfts(allNfts);
@@ -521,7 +461,8 @@ export const mintNFT = async () => {
         mintBtn.disabled = true;
         mintBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
         const defaultUri = 'https://placehold.co/250x250/0d1117/FFFFFF?text=WagyDog';
-        const tx = await contract.mint(address, { value: mintPrice, gasLimit: 300000 });
+        // Use safeMint(to, uri) payable as defined in CONTRACT_ABI
+        const tx = await contract.safeMint(address, defaultUri, { value: mintPrice, gasLimit: 300000 });
         await tx.wait();
         alert('Mint successful! Check your wallet.');
         renderNfts();

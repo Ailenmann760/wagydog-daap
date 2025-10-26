@@ -126,7 +126,8 @@ const connectWithInjected = async () => {
 
 const connectWithWalletConnect = async () => {
     if (!window.WalletConnectEthereumProvider) throw new Error('WalletConnect provider not loaded');
-    const provider = await window.WalletConnectEthereumProvider.init({
+    const ProviderCtor = window.WalletConnectEthereumProvider.default || window.WalletConnectEthereumProvider;
+    const provider = await ProviderCtor.init({
         projectId: PROJECT_ID,
         chains: [97],
         showQrModal: true,
@@ -142,12 +143,9 @@ const connectWithWalletConnect = async () => {
         ]
     });
     await provider.enable();
-    // Try ensure correct chain
     try {
         await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_CONFIG.chainId }] });
-    } catch (e) {
-        // ignore
-    }
+    } catch (_) {}
     window.wagyDog.provider = new ethers.BrowserProvider(provider);
     window.wagyDog.signer = await window.wagyDog.provider.getSigner();
     window.wagyDog.address = await window.wagyDog.signer.getAddress();
@@ -258,6 +256,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const injectedBtn = document.getElementById('connect-injected');
     const wcBtn = document.getElementById('connect-wc');
     const deepLinkBtn = document.getElementById('connect-deeplink');
+    // Explicit wallet shortcuts
+    const metamaskBtn = document.getElementById('wallet-metamask');
+    const trustBtn = document.getElementById('wallet-trust');
+    const coinbaseBtn = document.getElementById('wallet-coinbase');
+    const okxBtn = document.getElementById('wallet-okx');
+    const phantomBtn = document.getElementById('wallet-phantom');
+    const solflareBtn = document.getElementById('wallet-solflare');
     
     if (closeBtn) closeBtn.addEventListener('click', () => modal?.classList.add('hidden'));
     if (modal) modal.addEventListener('click', (e) => { 
@@ -285,6 +290,30 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`WalletConnect failed: ${error.message}`);
         }
     });
+
+    // Direct wallet buttons map to WC or injected
+    const tryInjectedThenWc = async (preferred) => {
+        modal?.classList.add('hidden');
+        try {
+            if (window.ethereum) {
+                // Some wallets expose flags; attempt injected first
+                await connectWithInjected();
+            } else {
+                await connectWithWalletConnect();
+            }
+            await updateUi(window.wagyDog.address);
+        } catch (error) {
+            console.error(`${preferred} connect failed:`, error);
+            alert(`${preferred} connect failed: ${error.message}`);
+        }
+    };
+    metamaskBtn?.addEventListener('click', () => tryInjectedThenWc('MetaMask'));
+    trustBtn?.addEventListener('click', () => tryInjectedThenWc('Trust Wallet'));
+    coinbaseBtn?.addEventListener('click', () => tryInjectedThenWc('Coinbase Wallet'));
+    okxBtn?.addEventListener('click', () => tryInjectedThenWc('OKX Wallet'));
+    // Phantom/Solflare are Solana wallets; we still route via WC to show options
+    phantomBtn?.addEventListener('click', () => tryInjectedThenWc('Phantom'));
+    solflareBtn?.addEventListener('click', () => tryInjectedThenWc('Solflare'));
     
     if (deepLinkBtn) deepLinkBtn.addEventListener('click', () => {
         const currentUrl = window.location.href;
