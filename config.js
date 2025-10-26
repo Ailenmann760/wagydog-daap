@@ -85,27 +85,51 @@ export const ERC20_ABI = [
 // Known tokens on BSC Testnet
 export const TOKENS = [
   {
-    name: 'BNB',
-    symbol: 'BNB',
+    name: 'Wrapped BNB',
+    symbol: 'WBNB',
     address: WBNB_ADDRESS,
     decimals: 18,
-    logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png'
+    logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png',
+    isNative: true
   },
   {
-    name: 'PancakeSwap',
+    name: 'PancakeSwap Token',
     symbol: 'CAKE',
     address: '0xFa60D973F7642B748046464E165A65B7323b0DEE', // CAKE testnet
     decimals: 18,
     logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png'
   },
   {
-    name: 'BUSD',
+    name: 'Binance USD',
     symbol: 'BUSD',
     address: '0x8301F2213c0eeD49a7E28Ae4c3e91722919B8B47', // BUSD testnet
     decimals: 18,
     logo: 'https://cryptologos.cc/logos/busd-busd-logo.png'
+  },
+  {
+    name: 'Tether USD',
+    symbol: 'USDT',
+    address: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd', // USDT testnet
+    decimals: 18,
+    logo: 'https://cryptologos.cc/logos/tether-usdt-logo.png'
+  },
+  {
+    name: 'USD Coin',
+    symbol: 'USDC',
+    address: '0x64544969ed7EBf5f083679233325356EbE738930', // USDC testnet
+    decimals: 18,
+    logo: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png'
   }
 ];
 
-// Optional WAGY token address if/when deployed on testnet
-export const WAGY_ADDRESS = '0x0000000000000000000000000000000000000000';
+// WagyDog token - for demo purposes using a testnet token
+export const WAGY_ADDRESS = '0xFa60D973F7642B748046464E165A65B7323b0DEE'; // Using CAKE as placeholder for WAGY
+
+// Add WagyDog token to the list
+TOKENS.push({
+  name: 'WagyDog',
+  symbol: 'WAGY',
+  address: WAGY_ADDRESS,
+  decimals: 18,
+  logo: './wagydog-logo.png'
+});

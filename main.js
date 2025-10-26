@@ -3,7 +3,7 @@ import { connectWallet, disconnectWallet } from './wallet.js';
 import { renderNfts } from './nft.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("WagyDog DApp loaded and running!");
+    console.log("🚀 WagyDog DApp loaded and running! To the moon! 🌙");
 
     // Mobile menu
     const menuBtn = document.getElementById('menu-btn');
@@ -11,9 +11,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileLinks = document.querySelectorAll('.mobile-link');
 
     if (menuBtn && mobileMenu) {
-        menuBtn.addEventListener('click', () => {
+        menuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             console.log('Mobile menu toggled');
             mobileMenu.classList.toggle('hidden');
+            
+            // Update menu icon
+            const icon = menuBtn.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-bars');
+                icon.classList.toggle('fa-times');
+            }
         });
     }
 
@@ -21,8 +30,26 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', () => {
             if (mobileMenu) {
                 mobileMenu.classList.add('hidden');
+                // Reset menu icon
+                const icon = menuBtn?.querySelector('i');
+                if (icon) {
+                    icon.classList.add('fa-bars');
+                    icon.classList.remove('fa-times');
+                }
             }
         });
+    });
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (mobileMenu && !mobileMenu.contains(e.target) && !menuBtn?.contains(e.target)) {
+            mobileMenu.classList.add('hidden');
+            const icon = menuBtn?.querySelector('i');
+            if (icon) {
+                icon.classList.add('fa-bars');
+                icon.classList.remove('fa-times');
+            }
+        }
     });
 
     // Scroll animations
@@ -78,7 +105,53 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadMintBtn.addEventListener('click', uploadAndMintNFT);
     }
 
-    console.log('DApp fully initialized');
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Add floating animation to logo
+    const logo = document.querySelector('img[alt="WagyDog Logo"]');
+    if (logo) {
+        logo.classList.add('float-animation');
+    }
+
+    // Add pulse animation to important buttons
+    const importantButtons = document.querySelectorAll('.btn-primary');
+    importantButtons.forEach(btn => {
+        btn.addEventListener('mouseenter', () => {
+            btn.classList.add('pulse-animation');
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.classList.remove('pulse-animation');
+        });
+    });
+
+    // Add loading states to buttons
+    const addLoadingState = (button, text = 'Loading...') => {
+        const originalText = button.innerHTML;
+        button.innerHTML = `<div class="loading-spinner"></div>${text}`;
+        button.disabled = true;
+        
+        return () => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        };
+    };
+
+    // Make loading state available globally
+    window.addLoadingState = addLoadingState;
+
+    console.log('🎉 WagyDog DApp fully initialized! Ready for moon mission! 🚀');
 });
 
 // Global functions for marketplace
