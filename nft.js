@@ -9,33 +9,63 @@ const uploadMintBtn = document.getElementById('upload-mint-btn');
 const { create } = window.IpfsHttpClient;
 const ipfs = create({ url: 'https://ipfs.infura.io:5001/api/v0' });
 
-const dummyNfts = [
-    { id: 1, name: 'Cosmic Wagy', artist: 'Galaxy Paws', price: '0.1', image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=600' },
-    { id: 2, name: 'Nebula Pup', artist: 'Starlight Studio', price: '0.25', image: 'https://images.pexels.com/photos/1665241/pexels-photo-1665241.jpeg?auto=compress&cs=tinysrgb&w=600' },
-    { id: 3, name: 'Star Chaser', artist: 'Andromeda Art', price: '0.5', image: 'https://images.pexels.com/photos/4587993/pexels-photo-4587993.jpeg?auto=compress&cs=tinysrgb&w=600' },
-];
+const dummyNfts = [];
 
-const createNftCard = (nft, isListed = false, price = 0) => `
+const createNftCard = (nft, isListed = false, price = 0, owner = '') => `
     <div class="nft-card border border-gray-300 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow bg-white">
         <img src="${nft.image}" alt="${nft.name}" class="w-full h-64 object-cover">
         <div class="p-4">
-            <h4 class="text-lg font-bold">${nft.name} #${nft.id}</h4>
-            <p class="text-gray-600 text-sm">${nft.artist}</p>
+            <h4 class="text-lg font-bold truncate">${nft.name} #${nft.id}</h4>
+            <p class="text-gray-600 text-sm truncate">${owner ? 'Owner: ' + owner : ''}</p>
             <div class="flex justify-between items-center mt-2">
                 <span class="text-gray-500 text-sm">Price</span>
                 <span class="font-bold text-blue-600">${isListed ? price + ' BNB' : 'Not Listed'}</span>
             </div>
-            ${isListed ? `<button class="btn-primary text-xs px-3 py-1 mt-2" onclick="buyNFT(${nft.id})">Buy</button>` : `<button class="btn-secondary text-xs px-3 py-1 mt-2" onclick="listNFT(${nft.id})">List for Sale</button>`}
+            <div class="flex gap-2 mt-3">
+                ${isListed ? `<button class="btn-primary text-xs px-3 py-1" onclick="buyNFT(${nft.id})">Buy</button>` : `<button class="btn-secondary text-xs px-3 py-1" onclick="listNFT(${nft.id})">List for Sale</button>`}
+                <button class="btn-secondary text-xs px-3 py-1" onclick="viewNFT(${nft.id})">Details</button>
+            </div>
         </div>
     </div>
 `;
 
-export const renderNfts = () => {
-    if (nftGallery) {
-        nftGallery.innerHTML = dummyNfts.map(nft => createNftCard(nft)).join('');
-        console.log('NFT gallery populated with 3 dummies');
-    } else {
-        console.warn('NFT gallery element not found');
+export const renderNfts = async () => {
+    if (!nftGallery) { console.warn('NFT gallery element not found'); return; }
+    try {
+        const provider = window.wagyDog.provider || new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545');
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+        const totalSupply = await contract.totalSupply();
+        const n = Number(totalSupply);
+        const items = [];
+        for (let i = 1; i <= n; i++) {
+            try {
+                const tokenId = BigInt(i);
+                const [uri, owner] = await Promise.all([
+                    contract.tokenURI(tokenId),
+                    contract.ownerOf(tokenId)
+                ]);
+                let meta = { name: `WagyDog #${i}`, image: 'https://placehold.co/400x400/0d1117/FFFFFF?text=WagyDog' };
+                try {
+                    const res = await fetch(uri);
+                    if (res.ok) meta = await res.json();
+                } catch (_) {}
+                const priceWei = await (async () => { try { return await contract.getListingPrice(tokenId); } catch { return 0n; } })();
+                const price = priceWei ? Number(ethers.formatEther(priceWei)) : 0;
+                const isListed = priceWei && priceWei > 0n;
+                items.push({ id: i, name: meta.name || `WagyDog #${i}`, image: meta.image || '', owner, isListed, price });
+            } catch (e) {
+                // skip non-existent
+            }
+        }
+        if (items.length === 0) {
+            nftGallery.innerHTML = '<div class="text-center text-gray-500">No NFTs yet. Mint one!</div>';
+            return;
+        }
+        nftGallery.innerHTML = items.map(x => createNftCard(x, x.isListed, x.price, x.owner)).join('');
+        console.log(`NFT gallery loaded ${items.length} items from chain`);
+    } catch (e) {
+        console.error('Failed to render NFTs', e);
+        nftGallery.innerHTML = '<div class="text-center text-red-500">Failed to load NFTs.</div>';
     }
 };
 
@@ -139,6 +169,22 @@ window.buyNFT = async (tokenId) => {
         renderNfts();
     } catch (error) {
         alert(`Buy failed: ${error.message}`);
+    }
+};
+
+window.viewNFT = async (tokenId) => {
+    try {
+        const provider = window.wagyDog.provider || new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545');
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+        const [uri, owner] = await Promise.all([
+            contract.tokenURI(BigInt(tokenId)),
+            contract.ownerOf(BigInt(tokenId))
+        ]);
+        let meta = {};
+        try { const res = await fetch(uri); if (res.ok) meta = await res.json(); } catch (_) {}
+        alert(`Token #${tokenId}\nOwner: ${owner}\nName: ${meta.name || ''}`);
+    } catch (e) {
+        alert('Failed to load details');
     }
 };
 

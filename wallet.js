@@ -94,9 +94,20 @@ const connectWithInjected = async () => {
     window.ethereum.on('chainChanged', () => window.location.reload());
 };
 
+const resolveWalletConnectEthereumProvider = () => {
+    const g = window;
+    // Try multiple UMD globals for robustness
+    if (g.WalletConnectEthereumProvider?.init) return g.WalletConnectEthereumProvider;
+    if (g.EthereumProvider?.init) return g.EthereumProvider;
+    if (g.WalletConnectProvider?.EthereumProvider?.init) return g.WalletConnectProvider.EthereumProvider;
+    if (g.WalletConnectProvider?.default?.init) return g.WalletConnectProvider.default;
+    return null;
+};
+
 const connectWithWalletConnect = async () => {
-    if (!window.WalletConnectEthereumProvider) throw new Error('WalletConnect provider not loaded');
-    const provider = await window.WalletConnectEthereumProvider.init({
+    const WCEthereumProvider = resolveWalletConnectEthereumProvider();
+    if (!WCEthereumProvider) throw new Error('WalletConnect provider not loaded');
+    const provider = await WCEthereumProvider.init({
         projectId: PROJECT_ID,
         chains: [97],
         showQrModal: true,
@@ -138,7 +149,7 @@ export const connectWallet = async () => {
         console.log('Attempting to connect wallet...');
         if (window.ethereum) {
             await connectWithInjected();
-        } else if (window.WalletConnectEthereumProvider) {
+        } else if (resolveWalletConnectEthereumProvider()) {
             await connectWithWalletConnect();
         } else {
             // Fallback: try deep link to MetaMask/Trust
@@ -180,6 +191,14 @@ export const openConnectModal = () => {
 
 // Modal actions
 document.addEventListener('DOMContentLoaded', () => {
+    // Auto-detect pre-authorized accounts (DApp browsers/mobile)
+    if (window.ethereum?.request) {
+        window.ethereum.request({ method: 'eth_accounts' }).then((accounts) => {
+            if (accounts && accounts.length > 0) {
+                connectWithInjected().then(() => updateUi(window.wagyDog.address)).catch(console.error);
+            }
+        }).catch(() => {});
+    }
     const modal = document.getElementById('connect-modal');
     const closeBtn = document.getElementById('connect-modal-close');
     const injectedBtn = document.getElementById('connect-injected');

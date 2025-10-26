@@ -1,4 +1,4 @@
-import { ROUTER_ADDRESS, ROUTER_ABI, ERC20_ABI, WAGY_ADDRESS, WBNB_ADDRESS } from './config.js';
+import { ROUTER_ADDRESS, ROUTER_ABI, ERC20_ABI, WAGY_ADDRESS, WBNB_ADDRESS, TOKENS } from './config.js';
 import { connectWallet } from './wallet.js';
 
 const fromAmountInput = document.getElementById('from-amount');
@@ -9,9 +9,20 @@ const swapDirectionBtn = document.getElementById('swap-direction-btn');
 const swapActionButton = document.getElementById('swap-action-btn');
 const swapStatus = document.getElementById('swap-status');
 
-let fromToken = { name: 'BNB', address: WBNB_ADDRESS, logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png', decimals: 18 };
-let toToken = { name: 'WAGY', address: WAGY_ADDRESS, logo: 'wagydog-logo.png', decimals: 18 };
-const BNB_TO_WAGY_RATE = 1500000;
+let fromToken = { name: 'BNB', symbol: 'BNB', address: WBNB_ADDRESS, logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png', decimals: 18 };
+// Default to CAKE on testnet (active liquidity)
+let toToken = { name: 'PancakeSwap', symbol: 'CAKE', address: TOKENS.find(t => t.symbol === 'CAKE').address, logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png', decimals: 18 };
+let readProvider = null;
+const initReadProvider = () => {
+    if (!readProvider) {
+        try {
+            readProvider = new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545');
+        } catch (e) {
+            console.warn('Failed to init read provider', e);
+        }
+    }
+};
+initReadProvider();
 
 const updateTokenDisplay = (buttonElement, token) => {
     if (!buttonElement) return;
@@ -37,6 +48,53 @@ const handleSwapDirection = () => {
     console.log('Swap direction toggled');
 };
 
+const getPathForPair = () => {
+    // BNB handled as WBNB in router paths
+    const fromIsBNB = fromToken.symbol === 'BNB';
+    const toIsBNB = toToken.symbol === 'BNB';
+    if (fromIsBNB && !toIsBNB) return [WBNB_ADDRESS, toToken.address];
+    if (!fromIsBNB && toIsBNB) return [fromToken.address, WBNB_ADDRESS];
+    if (!fromIsBNB && !toIsBNB) return [fromToken.address, WBNB_ADDRESS, toToken.address];
+    // BNB -> BNB (no-op)
+    return [WBNB_ADDRESS, WBNB_ADDRESS];
+};
+
+const updateRateText = async () => {
+    const rateEl = document.getElementById('swap-rate');
+    if (!rateEl) return;
+    try {
+        const path = getPathForPair();
+        if (!path || path.length < 2) { rateEl.textContent = 'Select tokens'; return; }
+        const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, (window.wagyDog.provider || readProvider));
+        const oneUnit = fromToken.symbol === 'BNB' ? ethers.parseEther('1') : ethers.parseUnits('1', fromToken.decimals || 18);
+        const amounts = await router.getAmountsOut(oneUnit, path);
+        const out = amounts[amounts.length - 1];
+        const outHuman = ethers.formatUnits(out, toToken.decimals || 18);
+        rateEl.textContent = `1 ${fromToken.symbol} ≈ ${Number(outHuman).toFixed(6)} ${toToken.symbol}`;
+    } catch (e) {
+        console.warn('Rate fetch failed, showing placeholder', e);
+        rateEl.textContent = 'Rate unavailable (enter amount to quote)';
+    }
+};
+
+const quoteToAmount = async () => {
+    const inputVal = parseFloat(fromAmountInput?.value || '');
+    if (!inputVal || inputVal <= 0 || !fromAmountInput || !toAmountInput) {
+        if (toAmountInput) toAmountInput.value = '';
+        return;
+    }
+    try {
+        const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, (window.wagyDog.provider || readProvider));
+        const path = getPathForPair();
+        const amountIn = fromToken.symbol === 'BNB' ? ethers.parseEther(inputVal.toString()) : ethers.parseUnits(inputVal.toString(), fromToken.decimals || 18);
+        const amounts = await router.getAmountsOut(amountIn, path);
+        const out = amounts[amounts.length - 1];
+        toAmountInput.value = ethers.formatUnits(out, toToken.decimals || 18);
+    } catch (e) {
+        console.warn('Quote failed', e);
+    }
+};
+
 const handleAmountChange = (e) => {
     const inputAmount = parseFloat(e.target.value);
     if (isNaN(inputAmount) || inputAmount <= 0) {
@@ -44,11 +102,8 @@ const handleAmountChange = (e) => {
         if (e.target.id === 'to-amount' && fromAmountInput) fromAmountInput.value = '';
         return;
     }
-    const rate = (fromToken.name === 'BNB') ? BNB_TO_WAGY_RATE : 1 / BNB_TO_WAGY_RATE;
-    if (e.target.id === 'from-amount' && toAmountInput) {
-        toAmountInput.value = (inputAmount * rate).toFixed(6);
-    } else if (fromAmountInput) {
-        fromAmountInput.value = (inputAmount / rate).toFixed(6);
+    if (e.target.id === 'from-amount') {
+        quoteToAmount();
     }
 };
 
@@ -71,21 +126,16 @@ export const performSwap = async () => {
         if (swapStatus) swapStatus.textContent = 'Executing swap...';
         const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 min
-        let path = [WBNB_ADDRESS, toToken.address];
-        if (fromToken.name !== 'BNB') {
-            path = [fromToken.address, WBNB_ADDRESS];
-        }
-        const amountIn = fromToken.name === 'BNB' ? ethers.parseEther(fromAmount.toString()) : ethers.parseUnits(fromAmount.toString(), fromToken.decimals || 18);
-        // Get expected out with 0.5% slippage
+        const fromIsBNB = fromToken.symbol === 'BNB';
+        const toIsBNB = toToken.symbol === 'BNB';
+        const path = getPathForPair();
+        const amountIn = fromIsBNB ? ethers.parseEther(fromAmount.toString()) : ethers.parseUnits(fromAmount.toString(), fromToken.decimals || 18);
         const amountsOut = await router.getAmountsOut(amountIn, path);
         const amountOutMin = amountsOut[amountsOut.length - 1] * 995n / 1000n; // 0.5% slippage
         let tx;
-        if (fromToken.name === 'BNB') {
-            tx = await router.swapExactETHForTokens(amountOutMin, path, signer.address, deadline, { 
-                value: amountIn, 
-                gasLimit: 500000 
-            });
-        } else {
+        if (fromIsBNB && !toIsBNB) {
+            tx = await router.swapExactETHForTokens(amountOutMin, path, signer.address, deadline, { value: amountIn, gasLimit: 500000 });
+        } else if (!fromIsBNB && toIsBNB) {
             const tokenContract = new ethers.Contract(fromToken.address, ERC20_ABI, signer);
             const allowance = await tokenContract.allowance(signer.address, ROUTER_ADDRESS);
             if (allowance < amountIn) {
@@ -94,6 +144,17 @@ export const performSwap = async () => {
                 await approveTx.wait();
             }
             tx = await router.swapExactTokensForETH(amountIn, amountOutMin, path, signer.address, deadline, { gasLimit: 500000 });
+        } else if (!fromIsBNB && !toIsBNB) {
+            const tokenContract = new ethers.Contract(fromToken.address, ERC20_ABI, signer);
+            const allowance = await tokenContract.allowance(signer.address, ROUTER_ADDRESS);
+            if (allowance < amountIn) {
+                if (swapStatus) swapStatus.textContent = 'Approving tokens...';
+                const approveTx = await tokenContract.approve(ROUTER_ADDRESS, amountIn, { gasLimit: 100000 });
+                await approveTx.wait();
+            }
+            tx = await router.swapExactTokensForTokens(amountIn, amountOutMin, path, signer.address, deadline, { gasLimit: 600000 });
+        } else {
+            throw new Error('Invalid swap pair');
         }
         const receipt = await tx.wait();
         if (swapStatus) swapStatus.textContent = 'Swap successful! Tx: ' + receipt.hash;
@@ -163,8 +224,8 @@ const searchTokens = async (query) => {
     }
     const popularTokens = [
         { name: 'Binance Coin', symbol: 'BNB', address: WBNB_ADDRESS, decimals: 18, logo: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' },
-        { name: 'Tether', symbol: 'USDT', address: '0x337610d27c682E347C9cD60BD4b3b107C9d34dDd', decimals: 18, logo: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
-        { name: 'PancakeSwap', symbol: 'CAKE', address: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', decimals: 18, logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png' },
+        { name: 'PancakeSwap', symbol: 'CAKE', address: TOKENS.find(t => t.symbol === 'CAKE').address, decimals: 18, logo: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png' },
+        { name: 'BUSD', symbol: 'BUSD', address: TOKENS.find(t => t.symbol === 'BUSD').address, decimals: 18, logo: 'https://cryptologos.cc/logos/busd-busd-logo.png' },
     ];
     const filtered = popularTokens.filter(t => t.name.toLowerCase().includes(query.toLowerCase()) || t.symbol.toLowerCase().includes(query.toLowerCase()));
     tokenList.innerHTML = filtered.map(t => `
@@ -208,4 +269,5 @@ if (swapActionButton) swapActionButton.addEventListener('click', performSwap);
 // Init
 updateTokenDisplay(fromTokenSelect, fromToken);
 updateTokenDisplay(toTokenSelect, toToken);
-console.log('Swap UI initialized with token selector');
+updateRateText();
+console.log('Swap UI initialized with token selector and live quotes');

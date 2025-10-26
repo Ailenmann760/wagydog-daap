@@ -1,5 +1,5 @@
 import { initStarfields } from './utils.js';
-import { connectWallet, disconnectWallet } from './wallet.js';
+import { openConnectModal, disconnectWallet } from './wallet.js';
 import { renderNfts } from './nft.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Connect button clicked:', btn.id);
             e.preventDefault();
             e.stopPropagation();
-            connectWallet();
+            openConnectModal();
         });
     });
 
@@ -72,16 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Upload/Mint listener
-    const uploadMintBtn = document.getElementById('upload-mint-btn');
-    if (uploadMintBtn) {
-        uploadMintBtn.addEventListener('click', uploadAndMintNFT);
-    }
-
     console.log('DApp fully initialized');
 });
 
-// Global functions for marketplace
-window.uploadAndMintNFT = uploadAndMintNFT;
-window.listNFT = listNFT;
-window.buyNFT = buyNFT;

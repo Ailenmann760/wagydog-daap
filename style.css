@@ -1,8 +1,10 @@
 /* === BASE STYLES === */
 body {
     font-family: 'Poppins', sans-serif;
-    background-color: #F8F9FD;
-    color: #1E293B;
+    background: radial-gradient(1200px 600px at 10% 10%, rgba(59,130,246,0.12), transparent),
+                radial-gradient(1000px 500px at 90% 20%, rgba(249,212,35,0.12), transparent),
+                #0b0a17;
+    color: #E5E7EB;
     overflow-x: hidden;
 }
 
@@ -13,24 +15,24 @@ body {
 }
 
 .btn-primary {
-    background-color: #3B82F6;
+    background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);
     color: white;
-    font-weight: 700;
+    font-weight: 800;
     padding: 0.75rem 2rem;
-    border-radius: 9999px;
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    transition: all 0.3s ease-in-out;
-    transform: scale(1);
+    border-radius: 16px;
+    box-shadow: 0 10px 20px rgba(59,130,246,0.3);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s;
+    transform: translateY(0) scale(1);
 }
 .btn-primary:hover {
-    box-shadow: 0 0 15px 0 rgb(59 130 246 / 0.5);
-    background-color: #2563EB;
-    transform: scale(1.05);
+    box-shadow: 0 20px 40px rgba(124,58,237,0.35);
+    filter: brightness(1.08);
+    transform: translateY(-2px) scale(1.02);
 }
 .btn-primary:disabled {
     background-color: #9CA3AF;
     box-shadow: none;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
     cursor: not-allowed;
 }
 
@@ -96,7 +98,7 @@ body {
 /* === SPACE THEME & ANIMATIONS === */
 .space-bg {
     position: relative;
-    background-color: #0c0a18;
+    background: linear-gradient(180deg, rgba(12,10,24,0.9), rgba(12,10,24,0.6));
     color: #e0e0e0;
 }
 #starfield, #starfield2 {
@@ -170,8 +172,8 @@ body {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 .nft-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 0 20px rgba(46, 144, 250, 0.5);
+    transform: translateY(-8px) rotate3d(1, 1, 0, 1.5deg);
+    box-shadow: 0 0 24px rgba(46, 144, 250, 0.5);
 }
 
 .nft-card-image {
@@ -225,7 +227,7 @@ body {
     border-radius: 1.5rem;
     border: 1px solid #E5E7EB;
     padding: 1.5rem;
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
     transition: all 0.3s ease-in-out;
 }
 @media (min-width: 640px) {
@@ -294,6 +296,7 @@ body {
 }
 .token-select-btn:hover {
     background-color: #E5E7EB;
+    transform: translateY(-1px);
 }
 
 .token-logo {
@@ -361,6 +364,29 @@ body {
 #swap-status {
     color: #10B981;
     font-weight: 600;
+}
+
+/* Header glass and meme flair */
+header {
+    background: rgba(10,10,20,0.6) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.nav-link { color: #D1D5DB; }
+.nav-link:hover { color: #F9D423; }
+
+/* Fun floating shapes */
+.floating-badge {
+    position: absolute;
+    right: 1rem;
+    top: -1rem;
+    background: linear-gradient(135deg, #F9D423, #FF4D4D);
+    color: #0b0a17;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 0.8rem;
+    transform: rotate(-6deg);
+    box-shadow: 0 8px 18px rgba(249,212,35,0.35);
 }
 
 /* Ensure buttons are clickable */
