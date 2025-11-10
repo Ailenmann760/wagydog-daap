@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { Wallet } from 'lucide-react';
-import { useAccount, useChainId, useSwitchChain } from 'wagmi';
+import { useAccount, useChainId, useDisconnect, useSwitchChain } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { bscTestnet } from 'wagmi/chains';
 
@@ -25,6 +25,7 @@ const ConnectWalletButton = ({
   const chainId = useChainId();
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
   const { open } = useWeb3Modal();
+  const { disconnect } = useDisconnect();
   const [isCompact, setIsCompact] = useState(forceCompact);
   const hasPromptedNetwork = useRef(false);
 
@@ -53,9 +54,15 @@ const ConnectWalletButton = ({
     [address, connectedLabel, isConnected, label],
   );
 
-  const handleClick = useCallback(() => {
-    open({ view: isConnected ? 'Account' : 'Connect' });
-  }, [isConnected, open]);
+  const handleOpenModal = useCallback(() => {
+    if (isConnected) {
+      open({ view: 'Account' });
+      return;
+    }
+
+    disconnect();
+    open({ view: 'Connect' });
+  }, [disconnect, isConnected, open]);
 
   useEffect(() => {
     if (!isConnected) {
@@ -85,7 +92,7 @@ const ConnectWalletButton = ({
   return (
     <button
       type="button"
-      onClick={handleClick}
+      onClick={handleOpenModal}
       className={classNames(
         variant === 'secondary' ? 'button-secondary' : 'button-primary',
         className,
