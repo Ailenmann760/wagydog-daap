@@ -4,6 +4,10 @@ import { formatUnits, parseEther } from 'viem';
 import { ArrowRight, Loader } from 'lucide-react';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/blockchain.js';
 
+const logContractReadError = (context, method) => (error) => {
+  console.warn(`[${context}] Failed to read ${method}. Verify contract configuration in config/blockchain.js`, error);
+};
+
 const TOKEN_DECIMALS = 18;
 const BNB_DECIMALS = 18;
 const DEFAULT_TOKENS_PER_NATIVE = 50_000_000;
@@ -28,6 +32,7 @@ const SwapComponent = () => {
     query: {
       staleTime: 60_000,
       refetchInterval: 120_000,
+      onError: logContractReadError('SwapComponent', 'tokensPerNative'),
     },
   });
 
@@ -39,6 +44,7 @@ const SwapComponent = () => {
     query: {
       enabled: parsedBnbAmount > 0n,
       refetchInterval: 60_000,
+      onError: logContractReadError('SwapComponent', 'getAmountOut'),
     },
   });
 
@@ -105,7 +111,7 @@ const SwapComponent = () => {
       return `1 BNB ≈ ${tokensPerNative.toLocaleString(undefined, { maximumFractionDigits: 2 })} WAGY`;
     }
 
-    return 'Rate unavailable';
+    return 'Rate unavailable — verify configuration';
   }, [amountOutQuery.data, amountOutQuery.isFetching, parsedBnbAmount, tokensPerNative, tokensPerNativeQuery.isFetching]);
 
   const formatBalance = (balanceQuery, symbol) => {

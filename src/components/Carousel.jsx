@@ -70,14 +70,17 @@ const Carousel = ({
     );
   };
 
+  const sectionPadding = 'clamp(2rem, 3vw, 2.5rem)';
+
   return (
     <section
-      className="surface-glass"
+      className="surface-glass carousel-root"
       style={{
-        padding: 'clamp(2rem, 3vw, 2.5rem)',
+        padding: sectionPadding,
         marginTop: '3rem',
         background: 'linear-gradient(130deg, rgba(12, 16, 30, 0.92), rgba(24, 30, 52, 0.92))',
         border: '1px solid rgba(124, 92, 255, 0.16)',
+        '--carousel-padding': sectionPadding,
       }}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -123,8 +126,9 @@ const Carousel = ({
         </div>
       </div>
 
-      <div style={{ overflow: 'hidden', position: 'relative' }}>
+      <div className="carousel-viewport" style={{ overflow: 'hidden', position: 'relative' }}>
         <div
+          className="carousel-track"
           style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${itemCount}, minmax(0, 1fr))`,

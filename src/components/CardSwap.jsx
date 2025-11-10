@@ -104,6 +104,7 @@ const CardSwap = ({
                   background: 'rgba(12, 16, 30, 0.75)',
                   display: 'grid',
                   gap: '0.45rem',
+                  textAlign: 'center',
                 }}
               >
                 <span style={{ fontSize: '1.35rem', fontWeight: 700 }}>{metric.value}</span>

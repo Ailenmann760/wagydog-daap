@@ -214,3 +214,37 @@ button {
     padding: 1.5rem;
   }
 }
+
+.carousel-root {
+  --carousel-padding: clamp(2rem, 3vw, 2.5rem);
+  overflow: hidden;
+}
+
+.carousel-root .carousel-viewport {
+  width: 100%;
+  overflow: hidden;
+}
+
+.carousel-root .carousel-track {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .carousel-root .carousel-viewport {
+    width: calc(100% - (var(--carousel-padding, 2rem) * 2));
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .metric-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .carousel-root .carousel-track {
+    gap: 1rem !important;
+  }
+}

@@ -6,10 +6,14 @@ import Carousel from '../components/Carousel.jsx';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Cpu, Database, ShieldCheck, Waves } from 'lucide-react';
 import { CONTRACT_ABI, CONTRACT_ADDRESS, BURN_ADDRESS } from '../config/blockchain.js';
+import useLivePriceFeed from '../hooks/useLivePriceFeed.js';
+
+const logContractReadError = (context, method) => (error) => {
+  console.warn(`[${context}] Failed to read ${method}. Verify contract configuration in config/blockchain.js`, error);
+};
 
 const TOKEN_DECIMALS = 18;
 const BNB_DECIMALS = 18;
-const ESTIMATED_BNB_USD = 275; // Approximate conversion used for display purposes only.
 
 const formatCompact = (value, maximumFractionDigits = 2) =>
   new Intl.NumberFormat('en-US', {
@@ -27,15 +31,21 @@ const formatTokenMetric = (data, { decimals, suffix, isLoading, fallbackLabel = 
   return `${formatCompact(normalized, fractionDigits)}${suffix ? ` ${suffix}` : ''}`;
 };
 
-const formatPriceMetric = (data, { decimals, isLoading, fallbackLabel = '—', fractionDigits = 4 }) => {
+const formatPriceMetric = (data, { decimals, isLoading, fallbackLabel = '≈ 0.00 USD', formatUsd }) => {
   if (isLoading) return 'Loading…';
   if (data == null) return fallbackLabel;
 
   const priceInBnb = Number.parseFloat(formatUnits(data, decimals));
   if (!Number.isFinite(priceInBnb)) return fallbackLabel;
 
-  const priceInUsd = priceInBnb * ESTIMATED_BNB_USD;
-  return `≈ ${priceInUsd.toFixed(2)} USD`;
+  if (typeof formatUsd === 'function') {
+    const priceInUsd = formatUsd(priceInBnb);
+    if (Number.isFinite(priceInUsd)) {
+      return `≈ ${priceInUsd.toFixed(2)} USD`;
+    }
+  }
+
+  return fallbackLabel;
 };
 
 const heroCards = [
@@ -124,6 +134,8 @@ const spotlightBlocks = [
 ];
 
 const HomePage = () => {
+  const { formatBnbToUsd } = useLivePriceFeed();
+
   const totalSupplyQuery = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
@@ -131,6 +143,7 @@ const HomePage = () => {
     query: {
       staleTime: 60_000,
       refetchInterval: 120_000,
+      onError: logContractReadError('HomePage', 'totalSupply'),
     },
   });
 
@@ -142,6 +155,7 @@ const HomePage = () => {
     query: {
       staleTime: 90_000,
       refetchInterval: 180_000,
+      onError: logContractReadError('HomePage', 'balanceOf burn address'),
     },
   });
 
@@ -152,6 +166,7 @@ const HomePage = () => {
     query: {
       staleTime: 90_000,
       refetchInterval: 180_000,
+      onError: logContractReadError('HomePage', 'MINT_PRICE'),
     },
   });
 
@@ -180,6 +195,7 @@ const HomePage = () => {
         value: formatPriceMetric(mintPriceQuery.data, {
           decimals: BNB_DECIMALS,
           isLoading: mintPriceQuery.isLoading,
+          formatUsd: formatBnbToUsd,
         }),
       },
       {
@@ -192,6 +208,7 @@ const HomePage = () => {
       burnedSupplyQuery.isLoading,
       mintPriceQuery.data,
       mintPriceQuery.isLoading,
+      formatBnbToUsd,
       totalSupplyQuery.data,
       totalSupplyQuery.isLoading,
     ],
