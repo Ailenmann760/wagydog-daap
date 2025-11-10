@@ -49,14 +49,14 @@ export const CONTRACT_ABI = [
 ];
 
 export const CHAIN_CONFIG = {
-  chainId: '0x61',
+  chainId: 97,
   chainName: 'Binance Smart Chain Testnet',
   nativeCurrency: {
     name: 'Binance Coin',
     symbol: 'BNB',
     decimals: 18,
   },
-  rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545'],
+  rpcUrls: ['https://data-seed-prebsc-2-s3.bnbchain.org:8545'],
   blockExplorerUrls: ['https://testnet.bscscan.com'],
 };
 
