@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Cpu, Database, ShieldCheck, Waves } from 'lucide-react';
 import { CONTRACT_ABI, CONTRACT_ADDRESS, BURN_ADDRESS } from '../config/blockchain.js';
 import useLivePriceFeed from '../hooks/useLivePriceFeed.js';
+import useLiquidityLocked from '../hooks/useLiquidityLocked.js';
 
 const logContractReadError = (context, method) => (error) => {
   console.warn(`[${context}] Failed to read ${method}. Verify contract configuration in config/blockchain.js`, error);
@@ -134,7 +135,8 @@ const spotlightBlocks = [
 ];
 
 const HomePage = () => {
-  const { formatBnbToUsd } = useLivePriceFeed();
+  const { formatBnbToUsd, formattedPrice: liveBnbPrice, isLoading: isPriceLoading } = useLivePriceFeed();
+  const liquidityLocked = useLiquidityLocked();
 
   const totalSupplyQuery = useReadContract({
     address: CONTRACT_ADDRESS,
@@ -170,49 +172,56 @@ const HomePage = () => {
     },
   });
 
-  const heroMetrics = useMemo(
-    () => [
-      {
-        label: 'Total Supply',
-        value: formatTokenMetric(totalSupplyQuery.data, {
-          decimals: TOKEN_DECIMALS,
-          suffix: 'WAGY',
-          isLoading: totalSupplyQuery.isLoading,
-          fractionDigits: 3,
-        }),
-      },
-      {
-        label: 'Tokens Burned',
-        value: formatTokenMetric(burnedSupplyQuery.data, {
-          decimals: TOKEN_DECIMALS,
-          suffix: 'WAGY',
-          isLoading: burnedSupplyQuery.isLoading,
-          fractionDigits: 3,
-        }),
-      },
+  const liquidityMetricValue = useMemo(() => {
+    if (liquidityLocked.isLoading) return 'Loading…';
+    if (liquidityLocked.status === 'error') return 'Unavailable';
+    if (liquidityLocked.formattedLockedUsd) return liquidityLocked.formattedLockedUsd;
+    return '—';
+  }, [liquidityLocked.formattedLockedUsd, liquidityLocked.isLoading, liquidityLocked.status]);
+
+  const heroMetrics = useMemo(() => {
+    const totalSupply = formatTokenMetric(totalSupplyQuery.data, {
+      decimals: TOKEN_DECIMALS,
+      suffix: 'WAGY',
+      isLoading: totalSupplyQuery.isLoading,
+      fractionDigits: 3,
+    });
+
+    const burnedTokens = formatTokenMetric(burnedSupplyQuery.data, {
+      decimals: TOKEN_DECIMALS,
+      suffix: 'WAGY',
+      isLoading: burnedSupplyQuery.isLoading,
+      fractionDigits: 3,
+    });
+
+    const marketPriceUsd = formatPriceMetric(mintPriceQuery.data, {
+      decimals: BNB_DECIMALS,
+      isLoading: mintPriceQuery.isLoading,
+      formatUsd: formatBnbToUsd,
+    });
+
+    return [
+      { label: 'Total Supply', value: totalSupply },
+      { label: 'Tokens Burned', value: burnedTokens },
       {
         label: 'Market Price (USD)',
-        value: formatPriceMetric(mintPriceQuery.data, {
-          decimals: BNB_DECIMALS,
-          isLoading: mintPriceQuery.isLoading,
-          formatUsd: formatBnbToUsd,
-        }),
+        value: marketPriceUsd,
+        context: isPriceLoading ? 'Refreshing…' : liveBnbPrice,
       },
-      {
-        label: 'Liquidity Locked',
-        value: 'Coming soon',
-      },
-    ],
-    [
-      burnedSupplyQuery.data,
-      burnedSupplyQuery.isLoading,
-      mintPriceQuery.data,
-      mintPriceQuery.isLoading,
-      formatBnbToUsd,
-      totalSupplyQuery.data,
-      totalSupplyQuery.isLoading,
-    ],
-  );
+      { label: 'Liquidity Locked', value: liquidityMetricValue },
+    ];
+  }, [
+    burnedSupplyQuery.data,
+    burnedSupplyQuery.isLoading,
+    formatBnbToUsd,
+    isPriceLoading,
+    liquidityMetricValue,
+    liveBnbPrice,
+    mintPriceQuery.data,
+    mintPriceQuery.isLoading,
+    totalSupplyQuery.data,
+    totalSupplyQuery.isLoading,
+  ]);
 
   return (
     <div style={{ display: 'grid', gap: '3rem' }}>

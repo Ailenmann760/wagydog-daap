@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -10,6 +11,7 @@ import {
   GitBranch,
   Globe,
 } from 'lucide-react';
+import useDeployContract from '../hooks/useDeployContract.js';
 
 const workflowSteps = [
   {
@@ -73,8 +75,19 @@ const sdkDownloads = [
   },
 ];
 
-const TokenFactoryPage = () => (
-  <div style={{ display: 'grid', gap: '3rem' }}>
+const TokenFactoryPage = () => {
+  const { deploy, status, transactionHash, gasFeeDisplay, error, isLoading, isSuccess, reset } = useDeployContract();
+
+  const handleDeploy = useCallback(async () => {
+    try {
+      await deploy();
+    } catch (err) {
+      console.warn('[TokenFactoryPage] Mock deployment failed', err);
+    }
+  }, [deploy]);
+
+  return (
+    <div style={{ display: 'grid', gap: '3rem' }}>
     <section
       className="surface-glass"
       style={{
@@ -193,10 +206,62 @@ const TokenFactoryPage = () => (
           />
         </label>
       </form>
-      <button type="button" className="button-primary" style={{ justifySelf: 'start' }}>
-        Deploy audited token contracts
-        <Rocket size={16} />
-      </button>
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <button
+            type="button"
+            className="button-primary"
+            style={{ justifySelf: 'start', minWidth: '220px', opacity: isLoading ? 0.7 : 1 }}
+            onClick={handleDeploy}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Deploying…' : 'Deploy audited token contracts'}
+            <Rocket size={16} />
+          </button>
+          <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', display: 'grid', gap: '0.35rem' }}>
+            <span>
+              Status:{' '}
+              <strong style={{ color: isSuccess ? 'var(--color-primary-accent)' : 'var(--color-text)' }}>
+                {status === 'idle' ? 'Ready' : status === 'pending' ? 'Pending' : status === 'success' ? 'Success' : 'Error'}
+              </strong>
+            </span>
+            <span>Estimated Gas: {gasFeeDisplay}</span>
+            {transactionHash && (
+              <span>
+                Tx Hash:{' '}
+                <code
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '8px',
+                    background: 'rgba(9, 10, 18, 0.9)',
+                    border: '1px solid rgba(124, 92, 255, 0.25)',
+                  }}
+                >
+                  {transactionHash.substring(0, 12)}…
+                </code>
+              </span>
+            )}
+            {error && (
+              <span style={{ color: 'var(--color-danger)' }}>
+                {error.message}{' '}
+                <button
+                  type="button"
+                  onClick={reset}
+                  style={{
+                    marginLeft: '0.35rem',
+                    background: 'transparent',
+                    color: 'inherit',
+                    border: 'none',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  Reset
+                </button>
+              </span>
+            )}
+          </div>
+        </div>
     </section>
 
     <section className="surface-glass" style={{ padding: '2rem', border: '1px solid rgba(124, 92, 255, 0.18)', display: 'grid', gap: '1.5rem' }} id="api">
@@ -303,6 +368,7 @@ const TokenFactoryPage = () => (
       </div>
     </section>
   </div>
-);
+  );
+};
 
 export default TokenFactoryPage;

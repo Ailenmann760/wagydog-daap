@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Wallet,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import classNames from 'classnames';
 import ConnectWalletButton from './ConnectWalletButton.jsx';
+import { useWatchBlocks } from 'wagmi';
 
 const ICON_MAP = {
   wallet: Wallet,
@@ -28,8 +29,38 @@ const CardNav = ({ brand, items, cta }) => {
   const location = useLocation();
   const [activeItem, setActiveItem] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [lastBlockNumber, setLastBlockNumber] = useState(null);
 
   const isExternal = (href = '') => href.startsWith('http');
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  useWatchBlocks({
+    watch: true,
+    enabled: true,
+    onBlock: (block) => {
+      if (!block) return;
+      const nextBlockNumber =
+        typeof block.number === 'bigint'
+          ? block.number.toString()
+          : block.number != null
+            ? String(block.number)
+            : block?.height != null
+              ? String(block.height)
+              : null;
+
+      if (!nextBlockNumber) return;
+
+      setLastBlockNumber((previous) => (previous === nextBlockNumber ? previous : nextBlockNumber));
+    },
+  });
+
+  const blockLabel = useMemo(() => {
+    if (!lastBlockNumber) return null;
+    return `Last Block: ${lastBlockNumber}`;
+  }, [lastBlockNumber]);
 
   return (
     <header
@@ -91,20 +122,24 @@ const CardNav = ({ brand, items, cta }) => {
               position: 'relative',
               zIndex: 15,
             }}
+              aria-expanded={mobileOpen}
+              aria-controls="primary-navigation"
+              aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
           >
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
 
-          <div
-            className={classNames('nav-items', { open: mobileOpen })}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1.25rem',
-              zIndex: mobileOpen ? 12 : 1,
-            }}
-          >
-            {items?.map((item) => {
+            <div
+              className={classNames('nav-items', { open: mobileOpen })}
+              id="primary-navigation"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1.25rem',
+                zIndex: mobileOpen ? 12 : 1,
+              }}
+            >
+              {items?.map((item) => {
               const Icon = ICON_MAP[item.icon] || Shield;
               const isCardActive = activeItem === item.title;
 
@@ -214,111 +249,166 @@ const CardNav = ({ brand, items, cta }) => {
                   </div>
                 </div>
               );
-            })}
-          </div>
-          <div
-            className="nav-cta"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', zIndex: 15 }}
-          >
-            <Link
-              to="/marketplace"
-              className="nav-marketplace-link"
+              })}
+            </div>
+            <div
+              className="nav-cta"
               style={{
-                fontSize: '0.92rem',
-                color: location.pathname === '/marketplace' ? 'var(--color-primary-accent)' : 'var(--color-text-muted)',
-                fontWeight: 600,
-                letterSpacing: '0.02em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                position: 'relative',
+                zIndex: 45,
+                flexWrap: 'wrap',
+                justifyContent: 'flex-end',
               }}
             >
-              Marketplace
-            </Link>
-            <ConnectWalletButton
-              label={cta?.label || 'Launch dApp'}
-              connectedLabel={cta?.connectedLabel}
-              className="nav-wallet-button"
-              style={{
-                borderRadius: '14px',
-                padding: '0.65rem 1.25rem',
-                fontWeight: 600,
-                letterSpacing: '0.02em',
-                boxShadow: '0 18px 32px -18px rgba(124, 92, 255, 0.75)',
-              }}
-              iconSize={18}
-            />
+              {blockLabel && (
+                <span
+                  className="nav-last-block"
+                  style={{
+                    fontSize: '0.7rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: 'var(--color-text-muted)',
+                    padding: '0.35rem 0.65rem',
+                    borderRadius: '999px',
+                    border: '1px solid rgba(124, 92, 255, 0.25)',
+                    background: 'rgba(12, 16, 28, 0.78)',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {blockLabel}
+                </span>
+              )}
+              <Link
+                to="/marketplace"
+                className="nav-marketplace-link"
+                style={{
+                  fontSize: '0.92rem',
+                  color: location.pathname === '/marketplace' ? 'var(--color-primary-accent)' : 'var(--color-text-muted)',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                Marketplace
+              </Link>
+              <ConnectWalletButton
+                label={cta?.label || 'Launch dApp'}
+                connectedLabel={cta?.connectedLabel}
+                className="nav-wallet-button"
+                style={{
+                  borderRadius: '14px',
+                  padding: '0.65rem 1.25rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  boxShadow: '0 18px 32px -18px rgba(124, 92, 255, 0.75)',
+                  position: 'relative',
+                  zIndex: 50,
+                }}
+                iconSize={18}
+                compactBreakpoint={768}
+              />
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      <style>
-        {`
-          @media (max-width: 960px) {
-            .nav-toggle {
-              display: block !important;
+        <style>
+          {`
+            .nav-last-block {
+              font-weight: 600;
+              white-space: nowrap;
             }
-            .nav-items {
-              position: absolute;
-              top: 100%;
-              right: 1.5rem;
-              left: 1.5rem;
-              display: grid !important;
-              gap: 1rem;
-              padding: 1rem;
-              margin-top: 1rem;
-              border-radius: 16px;
-              background: rgba(10, 12, 25, 0.95);
-              border: 1px solid rgba(124, 92, 255, 0.2);
-              transform-origin: top center;
-              transform: scaleY(0);
-              transition: transform 0.2s ease;
-              pointer-events: none;
-              opacity: 0;
+
+            @media (max-width: 960px) {
+              .nav-toggle {
+                display: block !important;
+              }
+              .nav-items {
+                position: absolute;
+                top: calc(100% + 0.75rem);
+                right: 1.5rem;
+                left: 1.5rem;
+                display: grid !important;
+                gap: 1rem;
+                padding: 1rem;
+                border-radius: 16px;
+                background: rgba(10, 12, 25, 0.95);
+                border: 1px solid rgba(124, 92, 255, 0.2);
+                transform-origin: top center;
+                transform: scaleY(0);
+                transition: transform 0.2s ease, opacity 0.2s ease;
+                pointer-events: none;
+                opacity: 0;
+                max-height: 0;
+                overflow: hidden;
+              }
+              .nav-items.open {
+                transform: scaleY(1);
+                pointer-events: auto;
+                opacity: 1;
+                max-height: 520px;
+              }
+              .nav-item .nav-card {
+                display: none;
+              }
+              .nav-item .nav-trigger {
+                justify-content: flex-start;
+                width: 100%;
+                border: 1px solid rgba(124, 92, 255, 0.18);
+                background: rgba(18, 20, 33, 0.9) !important;
+              }
+              .nav-cta {
+                margin-left: auto;
+                display: inline-flex !important;
+                align-items: center;
+                gap: 0.5rem;
+              }
+              .nav-marketplace-link {
+                display: none;
+              }
+              .nav-last-block {
+                display: none;
+              }
+              .nav-wallet-button {
+                padding: 0.55rem !important;
+                border-radius: 12px !important;
+                min-width: 44px;
+                box-shadow: none !important;
+              }
+              .nav-wallet-button svg {
+                width: 20px;
+                height: 20px;
+              }
             }
-            .nav-items.open {
-              transform: scaleY(1);
-              pointer-events: auto;
-              opacity: 1;
+
+            @media (max-width: 768px) {
+              header.surface {
+                padding: 1rem clamp(1rem, 5vw, 1.35rem) !important;
+              }
+              .nav-items {
+                right: clamp(1rem, 6vw, 1.5rem);
+                left: clamp(1rem, 6vw, 1.5rem);
+              }
+              .nav-cta {
+                gap: 0.6rem;
+              }
             }
-            .nav-item .nav-card {
-              display: none;
+
+            @media (max-width: 640px) {
+              .nav-cta {
+                gap: 0.5rem;
+              }
+              .nav-wallet-button {
+                padding: 0.45rem !important;
+              }
+              .nav-wallet-button svg {
+                width: 22px;
+                height: 22px;
+              }
             }
-            .nav-item .nav-trigger {
-              justify-content: flex-start;
-              width: 100%;
-              border: 1px solid rgba(124, 92, 255, 0.18);
-              background: rgba(18, 20, 33, 0.9) !important;
-            }
-            .nav-cta {
-              margin-left: auto;
-              display: inline-flex !important;
-              align-items: center;
-              gap: 0.5rem;
-            }
-            .nav-marketplace-link {
-              display: none;
-            }
-            .nav-wallet-button {
-              padding: 0.5rem !important;
-              border-radius: 12px !important;
-              min-width: 42px;
-              box-shadow: none !important;
-            }
-            .nav-wallet-button svg {
-              width: 20px;
-              height: 20px;
-            }
-            .nav-wallet-button .connect-wallet-button__label {
-              position: absolute;
-              width: 1px;
-              height: 1px;
-              padding: 0;
-              margin: -1px;
-              overflow: hidden;
-              clip: rect(0, 0, 0, 0);
-              border: 0;
-            }
-          }
-        `}
-      </style>
+          `}
+        </style>
     </header>
   );
 };
