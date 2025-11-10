@@ -14,6 +14,7 @@ const ConnectWalletButton = ({
   className,
   variant = 'primary',
   style,
+  iconSize = 16,
 }) => {
   const { address, isConnected } = useAccount();
   const { open } = useWeb3Modal();
@@ -27,9 +28,11 @@ const ConnectWalletButton = ({
       onClick={() => open({ view: isConnected ? 'Account' : 'Connect' })}
       className={classNames(variant === 'secondary' ? 'button-secondary' : 'button-primary', className)}
       style={style}
+      aria-label={displayLabel}
+      title={displayLabel}
     >
-      <Wallet size={16} />
-      <span>{displayLabel}</span>
+      <Wallet size={iconSize} />
+      <span className="connect-wallet-button__label">{displayLabel}</span>
     </button>
   );
 };

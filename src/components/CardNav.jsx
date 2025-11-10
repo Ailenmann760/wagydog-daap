@@ -88,6 +88,8 @@ const CardNav = ({ brand, items, cta }) => {
               background: 'transparent',
               border: 'none',
               color: 'var(--color-text)',
+              position: 'relative',
+              zIndex: 15,
             }}
           >
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
@@ -99,6 +101,7 @@ const CardNav = ({ brand, items, cta }) => {
               display: 'flex',
               alignItems: 'center',
               gap: '1.25rem',
+              zIndex: mobileOpen ? 12 : 1,
             }}
           >
             {items?.map((item) => {
@@ -212,31 +215,37 @@ const CardNav = ({ brand, items, cta }) => {
                 </div>
               );
             })}
-            </div>
-            <div className="nav-cta" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Link
-                to="/marketplace"
-                style={{
-                  fontSize: '0.92rem',
-                  color: location.pathname === '/marketplace' ? 'var(--color-primary-accent)' : 'var(--color-text-muted)',
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                }}
-              >
-                Marketplace
-              </Link>
-              <ConnectWalletButton
-                label={cta?.label || 'Launch dApp'}
-                connectedLabel={cta?.connectedLabel}
-                style={{
-                  borderRadius: '14px',
-                  padding: '0.65rem 1.25rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                  boxShadow: '0 18px 32px -18px rgba(124, 92, 255, 0.75)',
-                }}
-              />
-            </div>
+          </div>
+          <div
+            className="nav-cta"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', position: 'relative', zIndex: 15 }}
+          >
+            <Link
+              to="/marketplace"
+              className="nav-marketplace-link"
+              style={{
+                fontSize: '0.92rem',
+                color: location.pathname === '/marketplace' ? 'var(--color-primary-accent)' : 'var(--color-text-muted)',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+              }}
+            >
+              Marketplace
+            </Link>
+            <ConnectWalletButton
+              label={cta?.label || 'Launch dApp'}
+              connectedLabel={cta?.connectedLabel}
+              className="nav-wallet-button"
+              style={{
+                borderRadius: '14px',
+                padding: '0.65rem 1.25rem',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                boxShadow: '0 18px 32px -18px rgba(124, 92, 255, 0.75)',
+              }}
+              iconSize={18}
+            />
+          </div>
         </div>
       </nav>
 
@@ -261,9 +270,13 @@ const CardNav = ({ brand, items, cta }) => {
               transform-origin: top center;
               transform: scaleY(0);
               transition: transform 0.2s ease;
+              pointer-events: none;
+              opacity: 0;
             }
             .nav-items.open {
               transform: scaleY(1);
+              pointer-events: auto;
+              opacity: 1;
             }
             .nav-item .nav-card {
               display: none;
@@ -275,7 +288,33 @@ const CardNav = ({ brand, items, cta }) => {
               background: rgba(18, 20, 33, 0.9) !important;
             }
             .nav-cta {
-              display: none !important;
+              margin-left: auto;
+              display: inline-flex !important;
+              align-items: center;
+              gap: 0.5rem;
+            }
+            .nav-marketplace-link {
+              display: none;
+            }
+            .nav-wallet-button {
+              padding: 0.5rem !important;
+              border-radius: 12px !important;
+              min-width: 42px;
+              box-shadow: none !important;
+            }
+            .nav-wallet-button svg {
+              width: 20px;
+              height: 20px;
+            }
+            .nav-wallet-button .connect-wallet-button__label {
+              position: absolute;
+              width: 1px;
+              height: 1px;
+              padding: 0;
+              margin: -1px;
+              overflow: hidden;
+              clip: rect(0, 0, 0, 0);
+              border: 0;
             }
           }
         `}
