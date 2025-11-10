@@ -1,6 +1,7 @@
 export const PROJECT_ID = 'f177ccc83d51024d30957d2135be7ac0';
 
 export const CONTRACT_ADDRESS = '0x236237354Cef68d1EC34674dBD43e429AdA0d969';
+export const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
 export const CONTRACT_ABI = [
   { inputs: [], stateMutability: 'nonpayable', type: 'constructor' },
@@ -43,6 +44,8 @@ export const CONTRACT_ABI = [
   { inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }], name: 'buyNFT', outputs: [], stateMutability: 'payable', type: 'function' },
   { inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }], name: 'getListingPrice', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
   { inputs: [], name: 'totalSupply', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+  { inputs: [], name: 'tokensPerNative', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+  { inputs: [{ internalType: 'uint256', name: 'bnbAmount', type: 'uint256' }], name: 'getAmountOut', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
 ];
 
 export const CHAIN_CONFIG = {

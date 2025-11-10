@@ -1,7 +1,42 @@
+import { useMemo } from 'react';
+import { useReadContract } from 'wagmi';
+import { formatUnits } from 'viem';
 import CardSwap from '../components/CardSwap.jsx';
 import Carousel from '../components/Carousel.jsx';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Cpu, Database, ShieldCheck, Waves } from 'lucide-react';
+import { CONTRACT_ABI, CONTRACT_ADDRESS, BURN_ADDRESS } from '../config/blockchain.js';
+
+const TOKEN_DECIMALS = 18;
+const BNB_DECIMALS = 18;
+const ESTIMATED_BNB_USD = 275; // Approximate conversion used for display purposes only.
+
+const formatCompact = (value, maximumFractionDigits = 2) =>
+  new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    maximumFractionDigits,
+  }).format(value);
+
+const formatTokenMetric = (data, { decimals, suffix, isLoading, fallbackLabel = '—', fractionDigits = 2 }) => {
+  if (isLoading) return 'Loading…';
+  if (data == null) return fallbackLabel;
+
+  const normalized = Number.parseFloat(formatUnits(data, decimals));
+  if (!Number.isFinite(normalized)) return fallbackLabel;
+
+  return `${formatCompact(normalized, fractionDigits)}${suffix ? ` ${suffix}` : ''}`;
+};
+
+const formatPriceMetric = (data, { decimals, isLoading, fallbackLabel = '—', fractionDigits = 4 }) => {
+  if (isLoading) return 'Loading…';
+  if (data == null) return fallbackLabel;
+
+  const priceInBnb = Number.parseFloat(formatUnits(data, decimals));
+  if (!Number.isFinite(priceInBnb)) return fallbackLabel;
+
+  const priceInUsd = priceInBnb * ESTIMATED_BNB_USD;
+  return `≈ ${priceInUsd.toFixed(2)} USD`;
+};
 
 const heroCards = [
   {
@@ -26,12 +61,6 @@ const heroCards = [
     description: 'Native staking, farming, and credit markets built for meme coin velocity.',
     icon: 'utility',
   },
-];
-
-const heroMetrics = [
-  { label: 'Protocol Liquidity', value: '$72.4M' },
-  { label: 'Annualized Yield', value: '18.9%' },
-  { label: 'Active Governors', value: '12.3K' },
 ];
 
 const carouselItems = [
@@ -94,81 +123,156 @@ const spotlightBlocks = [
   },
 ];
 
-const HomePage = () => (
-  <div style={{ display: 'grid', gap: '3rem' }}>
-    <CardSwap
-      heading="The serious dApp stack for memecoin dominance"
-      subheading="WagyDog delivers enterprise-grade rails for community-led tokens with hyper-deflationary tokenomics and institutional liquidity."
-      description="Deploy, trade, and govern from a single control surface. Built for founders, treasuries, and DeFi desks that demand security and performance."
-      cta={{ label: 'Launch WagyDog dApp', href: '/swap' }}
-      secondaryCta={{ label: 'View Whitepaper', href: '/resources/audit' }}
-      metrics={heroMetrics}
-      cards={heroCards}
-      cardWidth={240}
-      cardHeight={156}
-      cardGap={24}
-    />
+const HomePage = () => {
+  const totalSupplyQuery = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'totalSupply',
+    query: {
+      staleTime: 60_000,
+      refetchInterval: 120_000,
+    },
+  });
 
-    <section className="grid" style={{ gap: '2rem' }}>
-      <header style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <span className="chip">WagyDog Ecosystem</span>
-        <h2 style={{ margin: 0, fontSize: '2.1rem', fontWeight: 600 }}>End-to-end infrastructure for tokenized communities</h2>
-        <p style={{ margin: 0, color: 'var(--color-text-muted)', maxWidth: '60ch' }}>
-          From on-chain liquidity to DAO operations, every module in WagyDog is orchestrated for real-time markets and measurable outcomes.
-        </p>
-      </header>
+  const burnedSupplyQuery = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'balanceOf',
+    args: [BURN_ADDRESS],
+    query: {
+      staleTime: 90_000,
+      refetchInterval: 180_000,
+    },
+  });
 
-      <div className="card-grid">
-        {spotlightBlocks.map((block) => (
-          <article
-            key={block.title}
-            className="surface-glass"
-            style={{
-              padding: '1.75rem',
-              border: '1px solid rgba(124, 92, 255, 0.16)',
-              background: 'linear-gradient(160deg, rgba(16, 18, 32, 0.92), rgba(26, 32, 54, 0.92))',
-              display: 'grid',
-              gap: '1rem',
-            }}
-          >
-            <span
+  const mintPriceQuery = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'MINT_PRICE',
+    query: {
+      staleTime: 90_000,
+      refetchInterval: 180_000,
+    },
+  });
+
+  const heroMetrics = useMemo(
+    () => [
+      {
+        label: 'Total Supply',
+        value: formatTokenMetric(totalSupplyQuery.data, {
+          decimals: TOKEN_DECIMALS,
+          suffix: 'WAGY',
+          isLoading: totalSupplyQuery.isLoading,
+          fractionDigits: 3,
+        }),
+      },
+      {
+        label: 'Tokens Burned',
+        value: formatTokenMetric(burnedSupplyQuery.data, {
+          decimals: TOKEN_DECIMALS,
+          suffix: 'WAGY',
+          isLoading: burnedSupplyQuery.isLoading,
+          fractionDigits: 3,
+        }),
+      },
+      {
+        label: 'Market Price (USD)',
+        value: formatPriceMetric(mintPriceQuery.data, {
+          decimals: BNB_DECIMALS,
+          isLoading: mintPriceQuery.isLoading,
+        }),
+      },
+      {
+        label: 'Liquidity Locked',
+        value: 'Coming soon',
+      },
+    ],
+    [
+      burnedSupplyQuery.data,
+      burnedSupplyQuery.isLoading,
+      mintPriceQuery.data,
+      mintPriceQuery.isLoading,
+      totalSupplyQuery.data,
+      totalSupplyQuery.isLoading,
+    ],
+  );
+
+  return (
+    <div style={{ display: 'grid', gap: '3rem' }}>
+      <CardSwap
+        heading="The serious dApp stack for memecoin dominance"
+        subheading="WagyDog delivers enterprise-grade rails for community-led tokens with hyper-deflationary tokenomics and institutional liquidity."
+        description="Deploy, trade, and govern from a single control surface. Built for founders, treasuries, and DeFi desks that demand security and performance."
+        cta={{ label: 'Launch WagyDog dApp', href: '/swap' }}
+        secondaryCta={{ label: 'View Whitepaper', href: '/resources/audit' }}
+        metrics={heroMetrics}
+        cards={heroCards}
+        cardWidth={240}
+        cardHeight={156}
+        cardGap={24}
+      />
+
+      <section className="grid" style={{ gap: '2rem' }}>
+        <header style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <span className="chip">WagyDog Ecosystem</span>
+          <h2 style={{ margin: 0, fontSize: '2.1rem', fontWeight: 600 }}>End-to-end infrastructure for tokenized communities</h2>
+          <p style={{ margin: 0, color: 'var(--color-text-muted)', maxWidth: '60ch' }}>
+            From on-chain liquidity to DAO operations, every module in WagyDog is orchestrated for real-time markets and measurable outcomes.
+          </p>
+        </header>
+
+        <div className="card-grid">
+          {spotlightBlocks.map((block) => (
+            <article
+              key={block.title}
+              className="surface-glass"
               style={{
+                padding: '1.75rem',
+                border: '1px solid rgba(124, 92, 255, 0.16)',
+                background: 'linear-gradient(160deg, rgba(16, 18, 32, 0.92), rgba(26, 32, 54, 0.92))',
                 display: 'grid',
-                placeItems: 'center',
-                width: '44px',
-                height: '44px',
-                borderRadius: '14px',
-                background: 'rgba(124, 92, 255, 0.16)',
-                border: '1px solid rgba(124, 92, 255, 0.26)',
-                color: '#a899ff',
+                gap: '1rem',
               }}
             >
-              <block.icon size={20} />
-            </span>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 600 }}>{block.title}</h3>
-              <p style={{ margin: '0.75rem 0 0', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>{block.copy}</p>
-            </div>
-            <Link
-              to={block.link.href}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontWeight: 600,
-                color: 'var(--color-primary-accent)',
-              }}
-            >
-              {block.link.label}
-              <ArrowRight size={16} />
-            </Link>
-          </article>
-        ))}
-      </div>
-    </section>
+              <span
+                style={{
+                  display: 'grid',
+                  placeItems: 'center',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '14px',
+                  background: 'rgba(124, 92, 255, 0.16)',
+                  border: '1px solid rgba(124, 92, 255, 0.26)',
+                  color: '#a899ff',
+                }}
+              >
+                <block.icon size={20} />
+              </span>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 600 }}>{block.title}</h3>
+                <p style={{ margin: '0.75rem 0 0', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>{block.copy}</p>
+              </div>
+              <Link
+                to={block.link.href}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontWeight: 600,
+                  color: 'var(--color-primary-accent)',
+                }}
+              >
+                {block.link.label}
+                <ArrowRight size={16} />
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
 
-    <Carousel items={carouselItems} autoplay pauseOnHover />
-  </div>
-);
+      <Carousel items={carouselItems} autoplay pauseOnHover />
+    </div>
+  );
+};
 
 export default HomePage;
