@@ -84,8 +84,8 @@ const Cubes = ({
 
   const effectiveGridSize = useMemo(() => {
     if (!isCompactViewport) return gridSize;
-    const cappedSize = Math.min(gridSize, 9);
-    return Math.max(4, cappedSize);
+    const cappedSize = Math.min(gridSize, 6);
+    return Math.max(3, cappedSize);
   }, [gridSize, isCompactViewport]);
 
   const effectiveRadius = useMemo(() => {
@@ -120,6 +120,9 @@ const Cubes = ({
     [rippleOnClick, prefersReducedMotion, isCompactViewport],
   );
 
+  const isStaticMode = isCompactViewport || prefersReducedMotion;
+  const interactivityEnabled = !isStaticMode;
+
   const cells = useMemo(
     () => Array.from({ length: effectiveGridSize }),
     [effectiveGridSize],
@@ -127,7 +130,7 @@ const Cubes = ({
 
   const tiltAt = useCallback(
     (rowCenter, colCenter) => {
-      if (!sceneRef.current) return;
+      if (!interactivityEnabled || !sceneRef.current) return;
       sceneRef.current.querySelectorAll('.cube').forEach((cube) => {
         const r = Number.parseFloat(cube.dataset.row);
         const c = Number.parseFloat(cube.dataset.col);
@@ -153,12 +156,13 @@ const Cubes = ({
           });
         }
       });
-    },
-      [effectiveRadius, effectiveMaxAngle, enterDur, leaveDur, easing],
+      },
+      [effectiveRadius, effectiveMaxAngle, enterDur, leaveDur, easing, interactivityEnabled],
   );
 
   const onPointerMove = useCallback(
     (event) => {
+      if (!interactivityEnabled) return;
       userActiveRef.current = true;
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
 
@@ -176,7 +180,7 @@ const Cubes = ({
         userActiveRef.current = false;
       }, 3000);
     },
-    [effectiveGridSize, tiltAt],
+    [effectiveGridSize, tiltAt, interactivityEnabled],
   );
 
   const resetAll = useCallback(() => {
@@ -193,7 +197,8 @@ const Cubes = ({
 
   const onTouchMove = useCallback(
     (event) => {
-      event.preventDefault();
+      if (!interactivityEnabled) return;
+      if (event.cancelable) event.preventDefault();
       userActiveRef.current = true;
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
 
@@ -213,24 +218,26 @@ const Cubes = ({
         userActiveRef.current = false;
       }, 3000);
     },
-      [effectiveGridSize, tiltAt],
+      [effectiveGridSize, tiltAt, interactivityEnabled],
   );
 
   const onTouchStart = useCallback(() => {
+    if (!interactivityEnabled) return;
     userActiveRef.current = true;
-  }, []);
+  }, [interactivityEnabled]);
 
   const onTouchEnd = useCallback(() => {
+    if (!interactivityEnabled) return;
     resetAll();
-  }, [resetAll]);
+  }, [resetAll, interactivityEnabled]);
 
   const onClick = useCallback(
     (event) => {
-        if (!allowRipple || !sceneRef.current) return;
+      if (!interactivityEnabled || !allowRipple || !sceneRef.current) return;
 
       const rect = sceneRef.current.getBoundingClientRect();
-        const cellW = rect.width / effectiveGridSize;
-        const cellH = rect.height / effectiveGridSize;
+      const cellW = rect.width / effectiveGridSize;
+      const cellH = rect.height / effectiveGridSize;
 
       const clientX =
         event.clientX ?? (event.touches && event.touches[0]?.clientX);
@@ -283,25 +290,25 @@ const Cubes = ({
           });
         });
     },
-      [allowRipple, effectiveGridSize, faceColor, rippleColor, rippleSpeed],
+    [allowRipple, effectiveGridSize, faceColor, rippleColor, rippleSpeed, interactivityEnabled],
   );
 
   useEffect(() => {
-      if (!shouldAutoAnimate || !sceneRef.current) {
-        if (simRAFRef.current != null) {
-          cancelAnimationFrame(simRAFRef.current);
-          simRAFRef.current = null;
-        }
-        return undefined;
+    if (!shouldAutoAnimate || !sceneRef.current || !interactivityEnabled) {
+      if (simRAFRef.current != null) {
+        cancelAnimationFrame(simRAFRef.current);
+        simRAFRef.current = null;
       }
+      return undefined;
+    }
 
     simPosRef.current = {
-        x: Math.random() * effectiveGridSize,
-        y: Math.random() * effectiveGridSize,
+      x: Math.random() * effectiveGridSize,
+      y: Math.random() * effectiveGridSize,
     };
     simTargetRef.current = {
-        x: Math.random() * effectiveGridSize,
-        y: Math.random() * effectiveGridSize,
+      x: Math.random() * effectiveGridSize,
+      y: Math.random() * effectiveGridSize,
     };
     const speed = 0.02;
 
@@ -314,8 +321,8 @@ const Cubes = ({
         tiltAt(pos.y, pos.x);
         if (Math.hypot(pos.x - tgt.x, pos.y - tgt.y) < 0.1) {
           simTargetRef.current = {
-              x: Math.random() * effectiveGridSize,
-              y: Math.random() * effectiveGridSize,
+            x: Math.random() * effectiveGridSize,
+            y: Math.random() * effectiveGridSize,
           };
         }
       }
@@ -328,11 +335,18 @@ const Cubes = ({
         cancelAnimationFrame(simRAFRef.current);
       }
     };
-    }, [shouldAutoAnimate, effectiveGridSize, tiltAt]);
+  }, [shouldAutoAnimate, effectiveGridSize, tiltAt, interactivityEnabled]);
 
   useEffect(() => {
     const element = sceneRef.current;
     if (!element) return undefined;
+
+    if (!interactivityEnabled) {
+      resetAll();
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      if (idleTimerRef.current != null) clearTimeout(idleTimerRef.current);
+      return undefined;
+    }
 
     element.addEventListener('pointermove', onPointerMove);
     element.addEventListener('pointerleave', resetAll);
@@ -354,7 +368,15 @@ const Cubes = ({
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       if (idleTimerRef.current != null) clearTimeout(idleTimerRef.current);
     };
-    }, [onPointerMove, resetAll, onClick, onTouchMove, onTouchStart, onTouchEnd]);
+    }, [
+      onPointerMove,
+      resetAll,
+      onClick,
+      onTouchMove,
+      onTouchStart,
+      onTouchEnd,
+      interactivityEnabled,
+    ]);
 
     const sceneStyle = {
       gridTemplateColumns: cubeSize
@@ -365,6 +387,7 @@ const Cubes = ({
         : `repeat(${effectiveGridSize}, 1fr)`,
       columnGap: effectiveColGap,
       rowGap: effectiveRowGap,
+      pointerEvents: interactivityEnabled ? 'auto' : 'none',
     };
     const wrapperStyle = {
       '--cube-face-border': borderStyle,
@@ -379,10 +402,15 @@ const Cubes = ({
             height: `${effectiveGridSize * cubeSize}px`,
           }
         : {}),
+      pointerEvents: interactivityEnabled ? 'auto' : 'none',
     };
 
     return (
-      <div className="default-animation" style={wrapperStyle}>
+      <div
+        className={`default-animation${isStaticMode ? ' default-animation--static' : ''}`}
+        style={wrapperStyle}
+        aria-hidden={isStaticMode ? true : undefined}
+      >
         <div
           ref={sceneRef}
           className="default-animation--scene"
