@@ -156,23 +156,17 @@ const CardNav = ({ brand, items, cta }) => {
                 zIndex: mobileOpen ? 12 : 1,
               }}
             >
-              {items?.map((item) => {
-              const Icon = ICON_MAP[item.icon] || Shield;
-              const isCardActive = activeItem === item.title;
-
-              return (
-                <div
-                  key={item.title}
-                  className={classNames('nav-item', { active: isCardActive })}
-                  onMouseEnter={() => setActiveItem(item.title)}
-                  onMouseLeave={() => setActiveItem(null)}
-                  style={{ position: 'relative' }}
-                >
-                  <button
-                    type="button"
-                    className={classNames('nav-trigger', { active: isCardActive })}
-                    onClick={() => setMobileOpen(false)}
-                    style={{
+                {items?.map((item) => {
+                  const Icon = ICON_MAP[item.icon] || Shield;
+                  const isCardActive = activeItem === item.title;
+                  const primaryLink = item.links?.[0];
+                  const hasPrimaryLink = Boolean(primaryLink?.href);
+                  const primaryIsExternal = hasPrimaryLink && isExternal(primaryLink.href);
+                  const TriggerComponent = hasPrimaryLink ? (primaryIsExternal ? 'a' : Link) : 'button';
+                  const triggerProps = {
+                    className: classNames('nav-trigger', { active: isCardActive }),
+                    onClick: () => setMobileOpen(false),
+                    style: {
                       background: 'transparent',
                       border: 'none',
                       color: 'var(--color-text-muted)',
@@ -185,88 +179,114 @@ const CardNav = ({ brand, items, cta }) => {
                       padding: '0.75rem 1rem',
                       borderRadius: '14px',
                       transition: 'all 0.3s ease',
-                    }}
-                  >
-                    <Icon size={18} />
-                    {item.title}
-                  </button>
+                      textDecoration: 'none',
+                    },
+                  };
 
-                  <div
-                    className={classNames('nav-card', { visible: isCardActive })}
-                    style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 0.75rem)',
-                      left: '50%',
-                      transform: 'translateX(-50%) translateY(12px)',
-                      width: 'min(320px, 88vw)',
-                      padding: '1.5rem',
-                      borderRadius: '20px',
-                      backdropFilter: 'blur(24px)',
-                      border: '1px solid rgba(124, 92, 255, 0.18)',
-                      background: 'linear-gradient(160deg, rgba(10, 12, 24, 0.92), rgba(22, 25, 42, 0.92))',
-                      boxShadow: '0 32px 64px -28px rgba(0, 0, 0, 0.55)',
-                      opacity: isCardActive ? 1 : 0,
-                      visibility: isCardActive ? 'visible' : 'hidden',
-                      pointerEvents: isCardActive ? 'auto' : 'none',
-                      transition: 'all 0.25s ease',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                      <span
+                  if (hasPrimaryLink) {
+                    if (primaryIsExternal) {
+                      triggerProps.href = primaryLink.href;
+                      if (primaryLink.external) {
+                        triggerProps.target = '_blank';
+                        triggerProps.rel = 'noreferrer noopener';
+                      }
+                    } else {
+                      triggerProps.to = primaryLink.href;
+                    }
+                  } else {
+                    triggerProps.type = 'button';
+                  }
+
+                  return (
+                    <div
+                      key={item.title}
+                      className={classNames('nav-item', { active: isCardActive })}
+                      onMouseEnter={() => setActiveItem(item.title)}
+                      onMouseLeave={() => setActiveItem(null)}
+                      style={{ position: 'relative' }}
+                    >
+                      <TriggerComponent {...triggerProps}>
+                        <Icon size={18} />
+                        {item.title}
+                      </TriggerComponent>
+
+                      <div
+                        className={classNames('nav-card', { visible: isCardActive })}
                         style={{
-                          display: 'grid',
-                          placeItems: 'center',
-                          height: '36px',
-                          width: '36px',
-                          borderRadius: '12px',
-                          background: 'linear-gradient(135deg, rgba(124, 92, 255, 0.3), rgba(75, 225, 195, 0.1))',
-                          border: '1px solid rgba(124, 92, 255, 0.15)',
+                          position: 'absolute',
+                          top: 'calc(100% + 0.75rem)',
+                          left: '50%',
+                          transform: 'translateX(-50%) translateY(12px)',
+                          width: 'min(320px, 88vw)',
+                          padding: '1.5rem',
+                          borderRadius: '20px',
+                          backdropFilter: 'blur(24px)',
+                          border: '1px solid rgba(124, 92, 255, 0.18)',
+                          background: 'linear-gradient(160deg, rgba(10, 12, 24, 0.92), rgba(22, 25, 42, 0.92))',
+                          boxShadow: '0 32px 64px -28px rgba(0, 0, 0, 0.55)',
+                          opacity: isCardActive ? 1 : 0,
+                          visibility: isCardActive ? 'visible' : 'hidden',
+                          pointerEvents: isCardActive ? 'auto' : 'none',
+                          transition: 'all 0.25s ease',
                         }}
                       >
-                        <Icon size={18} />
-                      </span>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--color-text)' }}>{item.title}</div>
-                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{item.description}</p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      {item.links?.map((link) => {
-                        const Component = isExternal(link.href) ? 'a' : Link;
-
-                        return (
-                          <Component
-                            key={link.label}
-                            to={!isExternal(link.href) ? link.href : undefined}
-                            href={isExternal(link.href) ? link.href : undefined}
-                            target={link.external ? '_blank' : undefined}
-                            rel={link.external ? 'noreferrer noopener' : undefined}
-                            onClick={() => setMobileOpen(false)}
-                            className="nav-card-link"
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                          <span
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '0.75rem 1rem',
+                              display: 'grid',
+                              placeItems: 'center',
+                              height: '36px',
+                              width: '36px',
                               borderRadius: '12px',
-                              background: 'linear-gradient(120deg, rgba(18, 20, 33, 0.85), rgba(26, 32, 55, 0.85))',
-                              border: '1px solid rgba(124, 92, 255, 0.12)',
-                              color: 'var(--color-text)',
-                              fontWeight: 500,
-                              transition: 'transform 0.2s ease, border 0.2s ease, background 0.2s ease',
+                              background: 'linear-gradient(135deg, rgba(124, 92, 255, 0.3), rgba(75, 225, 195, 0.1))',
+                              border: '1px solid rgba(124, 92, 255, 0.15)',
                             }}
                           >
-                            <span>{link.label}</span>
-                            <ArrowRight size={16} />
-                          </Component>
-                        );
-                      })}
+                            <Icon size={18} />
+                          </span>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--color-text)' }}>{item.title}</div>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{item.description}</p>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '0.5rem' }}>
+                          {item.links?.map((link) => {
+                            const Component = isExternal(link.href) ? 'a' : Link;
+
+                            return (
+                              <Component
+                                key={link.label}
+                                to={!isExternal(link.href) ? link.href : undefined}
+                                href={isExternal(link.href) ? link.href : undefined}
+                                target={link.external ? '_blank' : undefined}
+                                rel={link.external ? 'noreferrer noopener' : undefined}
+                                onClick={() => setMobileOpen(false)}
+                                className="nav-card-link"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '0.75rem 1rem',
+                                  borderRadius: '12px',
+                                  background: 'linear-gradient(120deg, rgba(18, 20, 33, 0.85), rgba(26, 32, 55, 0.85))',
+                                  border: '1px solid rgba(124, 92, 255, 0.12)',
+                                  color: 'var(--color-text)',
+                                  fontWeight: 500,
+                                  transition: 'transform 0.2s ease, border 0.2s ease, background 0.2s ease',
+                                  textDecoration: 'none',
+                                }}
+                              >
+                                <span>{link.label}</span>
+                                <ArrowRight size={16} />
+                              </Component>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-              })}
+                  );
+                })}
             </div>
             <div
               className="nav-cta"
