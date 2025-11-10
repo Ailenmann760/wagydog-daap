@@ -17,6 +17,16 @@
   touch-action: manipulation;
 }
 
+.default-animation--static {
+  pointer-events: none;
+  touch-action: auto;
+  opacity: 0.9;
+}
+
+.default-animation--static .cube::before {
+  display: none;
+}
+
 .default-animation--scene {
   display: grid;
   width: 100%;
