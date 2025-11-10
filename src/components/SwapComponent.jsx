@@ -17,7 +17,7 @@ const SwapComponent = () => {
   const { address, isConnected } = useAccount();
   const [bnbAmount, setBnbAmount] = useState('0.1');
   const { writeContract, isPending, isSuccess, isError } = useWriteContract();
-  const { formatBnbToUsd, formatUsd, isLoading: isPriceLoading } = useLivePriceFeed({ pollInterval: 12_000 });
+  const { bnbPriceUsd, formatUsd, isLoading: isPriceLoading } = useLivePriceFeed({ pollInterval: 12_000 });
 
   const parsedBnbAmount = useMemo(() => {
     try {
@@ -99,13 +99,23 @@ const SwapComponent = () => {
 
   const estimatedUsdValue = useMemo(() => {
     const numericAmount = Number.parseFloat(bnbAmount);
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return 0;
-    return formatBnbToUsd(numericAmount);
-  }, [bnbAmount, formatBnbToUsd]);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return null;
+    if (typeof bnbPriceUsd !== 'number' || !Number.isFinite(bnbPriceUsd)) return null;
+    return numericAmount * bnbPriceUsd;
+  }, [bnbAmount, bnbPriceUsd]);
 
   const estimatedUsdDisplay = useMemo(() => {
     if (!Number.isFinite(estimatedUsdValue) || estimatedUsdValue <= 0) return '≈ $0.00';
-    return formatUsd(estimatedUsdValue, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+    if (typeof formatUsd === 'function') {
+      return formatUsd(estimatedUsdValue, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+    }
+
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(estimatedUsdValue);
   }, [estimatedUsdValue, formatUsd]);
 
   const rateDisplay = useMemo(() => {

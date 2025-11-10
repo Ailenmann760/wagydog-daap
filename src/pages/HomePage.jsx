@@ -32,21 +32,43 @@ const formatTokenMetric = (data, { decimals, suffix, isLoading, fallbackLabel = 
   return `${formatCompact(normalized, fractionDigits)}${suffix ? ` ${suffix}` : ''}`;
 };
 
-const formatPriceMetric = (data, { decimals, isLoading, fallbackLabel = '≈ 0.00 USD', formatUsd }) => {
+const formatPriceMetric = (
+  data,
+  {
+    decimals,
+    isLoading,
+    fallbackLabel = '≈ $0.00',
+    bnbPriceUsd,
+    wagyPriceUsd,
+    formatUsd,
+  },
+) => {
   if (isLoading) return 'Loading…';
-  if (data == null) return fallbackLabel;
 
-  const priceInBnb = Number.parseFloat(formatUnits(data, decimals));
-  if (!Number.isFinite(priceInBnb)) return fallbackLabel;
+  const wagyUsdCandidate = typeof wagyPriceUsd === 'number' && Number.isFinite(wagyPriceUsd) ? wagyPriceUsd : null;
+  const bnbUsdCandidate = typeof bnbPriceUsd === 'number' && Number.isFinite(bnbPriceUsd) ? bnbPriceUsd : null;
 
-  if (typeof formatUsd === 'function') {
-    const priceInUsd = formatUsd(priceInBnb);
-    if (Number.isFinite(priceInUsd)) {
-      return `≈ ${priceInUsd.toFixed(2)} USD`;
+  let displayPrice = wagyUsdCandidate;
+
+  if (displayPrice == null && data != null && bnbUsdCandidate != null) {
+    const priceInBnb = Number.parseFloat(formatUnits(data, decimals));
+    if (Number.isFinite(priceInBnb)) {
+      const computedUsd = priceInBnb * bnbUsdCandidate;
+      if (Number.isFinite(computedUsd)) {
+        displayPrice = computedUsd;
+      }
     }
   }
 
-  return fallbackLabel;
+  if (displayPrice == null) return fallbackLabel;
+
+  const formatter = typeof formatUsd === 'function'
+    ? formatUsd(displayPrice, { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+    : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(
+        displayPrice,
+      );
+
+  return `≈ ${formatter}`;
 };
 
 const heroCards = [
@@ -135,7 +157,14 @@ const spotlightBlocks = [
 ];
 
 const HomePage = () => {
-  const { formatBnbToUsd, formattedPrice: liveBnbPrice, isLoading: isPriceLoading } = useLivePriceFeed();
+  const {
+    bnbPriceUsd,
+    wagyPriceUsd,
+    formattedBnbPrice,
+    formattedWagyPrice,
+    isLoading: isPriceLoading,
+    formatUsd,
+  } = useLivePriceFeed();
   const liquidityLocked = useLiquidityLocked();
 
   const totalSupplyQuery = useReadContract({
@@ -196,9 +225,29 @@ const HomePage = () => {
 
     const marketPriceUsd = formatPriceMetric(mintPriceQuery.data, {
       decimals: BNB_DECIMALS,
-      isLoading: mintPriceQuery.isLoading,
-      formatUsd: formatBnbToUsd,
+      isLoading: mintPriceQuery.isLoading || isPriceLoading,
+      formatUsd,
+      bnbPriceUsd,
+      wagyPriceUsd,
     });
+
+    const marketPriceContext = (() => {
+      if (isPriceLoading) return 'Fetching live prices…';
+
+      const contextParts = [];
+
+      if (formattedWagyPrice) {
+        contextParts.push(`Proxy ≈ ${formattedWagyPrice}`);
+      }
+
+      if (formattedBnbPrice) {
+        contextParts.push(`BNB ≈ ${formattedBnbPrice}`);
+      }
+
+      if (contextParts.length === 0) return '—';
+
+      return contextParts.join(' • ');
+    })();
 
     return [
       { label: 'Total Supply', value: totalSupply },
@@ -206,21 +255,24 @@ const HomePage = () => {
       {
         label: 'Market Price (USD)',
         value: marketPriceUsd,
-        context: isPriceLoading ? 'Refreshing…' : liveBnbPrice,
+        context: marketPriceContext,
       },
       { label: 'Liquidity Locked', value: liquidityMetricValue },
     ];
   }, [
     burnedSupplyQuery.data,
     burnedSupplyQuery.isLoading,
-    formatBnbToUsd,
+    bnbPriceUsd,
+    formattedBnbPrice,
+    formattedWagyPrice,
     isPriceLoading,
     liquidityMetricValue,
-    liveBnbPrice,
     mintPriceQuery.data,
     mintPriceQuery.isLoading,
     totalSupplyQuery.data,
     totalSupplyQuery.isLoading,
+    wagyPriceUsd,
+    formatUsd,
   ]);
 
   return (
