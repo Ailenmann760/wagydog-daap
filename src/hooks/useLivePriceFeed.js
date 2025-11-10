@@ -6,6 +6,66 @@ const COIN_IDS = {
 };
 
 const COINGECKO_PRICE_URL = `https://api.coingecko.com/api/v3/simple/price?ids=${Object.values(COIN_IDS).join(',')}&vs_currencies=usd`;
+const DEFAULT_PRICE_PARAMS = {
+  ids: Object.values(COIN_IDS).join(','),
+  vs_currencies: 'usd',
+};
+
+const isBrowserEnvironment = () => typeof window !== 'undefined';
+
+const resolvePriceRequestConfig = () => {
+  const apiOverride = import.meta.env.VITE_PRICE_FEED_URL?.trim();
+  let endpoint = apiOverride;
+
+  if (!endpoint) {
+    if (isBrowserEnvironment()) {
+      const hostname = window.location.hostname;
+      const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(hostname);
+      endpoint = isLocalHost ? COINGECKO_PRICE_URL : '/.netlify/functions/price-feed';
+    } else {
+      endpoint = COINGECKO_PRICE_URL;
+    }
+  }
+
+  let url;
+
+  try {
+    url = endpoint.startsWith('http')
+      ? new URL(endpoint)
+      : new URL(endpoint, isBrowserEnvironment() ? window.location.origin : 'http://localhost');
+  } catch (error) {
+    console.warn('[useLivePriceFeed] Failed to construct price feed URL. Falling back to CoinGecko direct endpoint.', error);
+    url = new URL(COINGECKO_PRICE_URL);
+  }
+
+  if (!url.searchParams.has('ids')) {
+    url.searchParams.set('ids', DEFAULT_PRICE_PARAMS.ids);
+  }
+
+  if (!url.searchParams.has('vs_currencies')) {
+    url.searchParams.set('vs_currencies', DEFAULT_PRICE_PARAMS.vs_currencies);
+  }
+
+  const headers = {
+    accept: 'application/json',
+  };
+
+  if (url.hostname.includes('coingecko.com')) {
+    const proKey = import.meta.env.VITE_COINGECKO_PRO_API_KEY?.trim();
+    const demoKey = import.meta.env.VITE_COINGECKO_DEMO_API_KEY?.trim();
+
+    if (proKey) {
+      headers['x-cg-pro-api-key'] = proKey;
+    } else if (demoKey) {
+      headers['x-cg-demo-api-key'] = demoKey;
+    }
+  }
+
+  return {
+    url: url.toString(),
+    headers,
+  };
+};
 const DEFAULT_REFRESH_INTERVAL = 60_000;
 
 const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -23,11 +83,10 @@ const useLivePriceFeed = ({ pollInterval = DEFAULT_REFRESH_INTERVAL } = {}) => {
     setError(null);
 
     try {
-      const response = await fetch(COINGECKO_PRICE_URL, {
-        headers: {
-          accept: 'application/json',
-        },
-      });
+        const requestConfig = resolvePriceRequestConfig();
+        const response = await fetch(requestConfig.url, {
+          headers: requestConfig.headers,
+        });
 
       if (!response.ok) {
         throw new Error(`CoinGecko request failed with status ${response.status}`);
