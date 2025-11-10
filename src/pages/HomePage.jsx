@@ -3,6 +3,7 @@ import { useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
 import CardDashboard from '../components/CardDashboard.jsx';
 import Carousel from '../components/Carousel.jsx';
+import TrueFocus from '../components/TrueFocus.jsx';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Cpu, Database, ShieldCheck, Waves } from 'lucide-react';
 import { CONTRACT_ABI, CONTRACT_ADDRESS, BURN_ADDRESS } from '../config/blockchain.js';
@@ -253,7 +254,18 @@ const HomePage = () => {
   return (
     <div style={{ display: 'grid', gap: '3rem' }}>
       <CardDashboard
-        heading="The serious dApp stack for memecoin dominance"
+        headingComponent={
+          <h1 className="headline">
+            <TrueFocus
+              sentence="The dApp Stack The Wagydog Way"
+              borderColor="#7c5cff"
+              glowColor="rgba(124, 92, 255, 0.6)"
+              animationDuration={0.4}
+              pauseBetweenAnimations={1}
+              blurAmount={6}
+            />
+          </h1>
+        }
         subheading="WagyDog delivers enterprise-grade rails for community-led tokens with hyper-deflationary tokenomics and institutional liquidity."
         description="Deploy, trade, and govern from a single control surface. Built for founders, treasuries, and DeFi desks that demand security and performance."
         cta={{ label: 'Launch WagyDog dApp', href: '/swap' }}
