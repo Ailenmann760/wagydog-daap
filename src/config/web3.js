@@ -5,6 +5,14 @@ import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react';
 
 const chain = bscTestnet;
 const chains = [chain];
+const chainId = chain.id;
+const resolvedChainId = Number(CHAIN_CONFIG.chainId);
+
+if (!Number.isFinite(resolvedChainId) || resolvedChainId !== chainId) {
+  console.warn(
+    `[web3] CHAIN_CONFIG chainId (${CHAIN_CONFIG.chainId}) is out of sync with wagmi chain id (${chainId}).`,
+  );
+}
 
 const metadata = {
   name: 'WagyDog dApp',
@@ -18,7 +26,7 @@ export const config = defaultWagmiConfig({
   chains,
   metadata,
   transports: {
-    [chain.id]: http(CHAIN_CONFIG.rpcUrls[0]),
+    [chainId]: http(CHAIN_CONFIG.rpcUrls[0]),
   },
   autoConnect: false,
   ssr: true,

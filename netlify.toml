@@ -1,0 +1,5 @@
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # FIX: Add WalletConnect domains to frame-ancestors to prevent CSP violations when modals load.
+    Content-Security-Policy = "frame-ancestors 'self' https://verify.walletconnect.com https://secure.walletconnect.org https://secure-mobile.walletconnect.com https://secure-mobile.walletconnect.org"
