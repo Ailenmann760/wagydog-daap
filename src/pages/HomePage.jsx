@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
-import CardSwap from '../components/CardSwap.jsx';
+import CardDashboard from '../components/CardDashboard.jsx';
 import Carousel from '../components/Carousel.jsx';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Cpu, Database, ShieldCheck, Waves } from 'lucide-react';
@@ -70,31 +70,6 @@ const formatPriceMetric = (
 
   return `≈ ${formatter}`;
 };
-
-const heroCards = [
-  {
-    title: 'Hyper-Deflationary',
-    description: 'Smart-burn mechanics and real-time liquidity routing maintain perpetual scarcity.',
-    icon: 'flame',
-    badge: 'Tokenomics v2',
-  },
-  {
-    title: 'Secured & Audited',
-    description: 'Independent audits, live on-chain monitoring, and automated circuit breakers.',
-    icon: 'shield',
-    badge: 'Audit Ready',
-  },
-  {
-    title: 'Community Governance',
-    description: 'Delegated voting and proposal streaming keep token holders in the driver’s seat.',
-    icon: 'governance',
-  },
-  {
-    title: 'dApp Utility',
-    description: 'Native staking, farming, and credit markets built for meme coin velocity.',
-    icon: 'utility',
-  },
-];
 
 const carouselItems = [
   {
@@ -277,17 +252,13 @@ const HomePage = () => {
 
   return (
     <div style={{ display: 'grid', gap: '3rem' }}>
-      <CardSwap
+      <CardDashboard
         heading="The serious dApp stack for memecoin dominance"
         subheading="WagyDog delivers enterprise-grade rails for community-led tokens with hyper-deflationary tokenomics and institutional liquidity."
         description="Deploy, trade, and govern from a single control surface. Built for founders, treasuries, and DeFi desks that demand security and performance."
         cta={{ label: 'Launch WagyDog dApp', href: '/swap' }}
         secondaryCta={{ label: 'View Whitepaper', href: '/resources/audit' }}
         metrics={heroMetrics}
-        cards={heroCards}
-        cardWidth={240}
-        cardHeight={156}
-        cardGap={24}
       />
 
       <section className="grid" style={{ gap: '2rem' }}>
