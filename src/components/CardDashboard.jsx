@@ -6,6 +6,7 @@ import Cubes from './Cubes.jsx';
 const CardDashboard = ({
   label,
   heading,
+  headingComponent,
   subheading,
   description,
   metrics = [],
@@ -48,7 +49,11 @@ const CardDashboard = ({
               {label}
             </span>
           )}
-          {heading && <h1 className="headline">{heading}</h1>}
+          {headingComponent ? (
+            headingComponent
+          ) : (
+            heading && <h1 className="headline">{heading}</h1>
+          )}
           {subheading && (
             <p
               style={{
