@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import './Cubes.css';
 
@@ -41,6 +41,89 @@ const Cubes = ({
 
   const enterDur = duration.enter;
   const leaveDur = duration.leave;
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const mediaQuery = window.matchMedia('(max-width: 640px)');
+
+    const updateViewportState = () => {
+      setIsCompactViewport(mediaQuery.matches);
+    };
+
+    updateViewportState();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateViewportState);
+      return () => mediaQuery.removeEventListener('change', updateViewportState);
+    }
+
+    mediaQuery.addListener(updateViewportState);
+    return () => mediaQuery.removeListener(updateViewportState);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const reduceMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const updateMotionPreference = () => {
+      setPrefersReducedMotion(reduceMotionQuery.matches);
+    };
+
+    updateMotionPreference();
+
+    if (typeof reduceMotionQuery.addEventListener === 'function') {
+      reduceMotionQuery.addEventListener('change', updateMotionPreference);
+      return () => reduceMotionQuery.removeEventListener('change', updateMotionPreference);
+    }
+
+    reduceMotionQuery.addListener(updateMotionPreference);
+    return () => reduceMotionQuery.removeListener(updateMotionPreference);
+  }, []);
+
+  const effectiveGridSize = useMemo(() => {
+    if (!isCompactViewport) return gridSize;
+    const cappedSize = Math.min(gridSize, 9);
+    return Math.max(4, cappedSize);
+  }, [gridSize, isCompactViewport]);
+
+  const effectiveRadius = useMemo(() => {
+    if (!isCompactViewport) return radius;
+    const scaled = radius * 0.8;
+    if (!Number.isFinite(scaled) || scaled <= 0) return 2.25;
+    return Math.max(1.2, Math.min(scaled, radius));
+  }, [radius, isCompactViewport]);
+
+  const effectiveMaxAngle = useMemo(() => {
+    if (!isCompactViewport) return maxAngle;
+    return Math.min(maxAngle, 26);
+  }, [maxAngle, isCompactViewport]);
+
+  const effectiveColGap = useMemo(() => {
+    if (!isCompactViewport) return colGap;
+    return '2.5%';
+  }, [colGap, isCompactViewport]);
+
+  const effectiveRowGap = useMemo(() => {
+    if (!isCompactViewport) return rowGap;
+    return '2.5%';
+  }, [rowGap, isCompactViewport]);
+
+  const shouldAutoAnimate = useMemo(
+    () => autoAnimate && !prefersReducedMotion && !isCompactViewport,
+    [autoAnimate, prefersReducedMotion, isCompactViewport],
+  );
+
+  const allowRipple = useMemo(
+    () => rippleOnClick && !prefersReducedMotion && !isCompactViewport,
+    [rippleOnClick, prefersReducedMotion, isCompactViewport],
+  );
+
+  const cells = useMemo(
+    () => Array.from({ length: effectiveGridSize }),
+    [effectiveGridSize],
+  );
 
   const tiltAt = useCallback(
     (rowCenter, colCenter) => {
@@ -50,9 +133,9 @@ const Cubes = ({
         const c = Number.parseFloat(cube.dataset.col);
         const dist = Math.hypot(r - rowCenter, c - colCenter);
 
-        if (dist <= radius) {
-          const pct = 1 - dist / radius;
-          const angle = pct * maxAngle;
+        if (dist <= effectiveRadius) {
+          const pct = 1 - dist / effectiveRadius;
+          const angle = pct * effectiveMaxAngle;
           gsap.to(cube, {
             duration: enterDur,
             ease: easing,
@@ -71,7 +154,7 @@ const Cubes = ({
         }
       });
     },
-    [radius, maxAngle, enterDur, leaveDur, easing],
+      [effectiveRadius, effectiveMaxAngle, enterDur, leaveDur, easing],
   );
 
   const onPointerMove = useCallback(
@@ -79,9 +162,10 @@ const Cubes = ({
       userActiveRef.current = true;
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
 
+      if (!sceneRef.current) return;
       const rect = sceneRef.current.getBoundingClientRect();
-      const cellW = rect.width / gridSize;
-      const cellH = rect.height / gridSize;
+      const cellW = rect.width / effectiveGridSize;
+      const cellH = rect.height / effectiveGridSize;
       const colCenter = (event.clientX - rect.left) / cellW;
       const rowCenter = (event.clientY - rect.top) / cellH;
 
@@ -92,7 +176,7 @@ const Cubes = ({
         userActiveRef.current = false;
       }, 3000);
     },
-    [gridSize, tiltAt],
+    [effectiveGridSize, tiltAt],
   );
 
   const resetAll = useCallback(() => {
@@ -113,9 +197,10 @@ const Cubes = ({
       userActiveRef.current = true;
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
 
+      if (!sceneRef.current) return;
       const rect = sceneRef.current.getBoundingClientRect();
-      const cellW = rect.width / gridSize;
-      const cellH = rect.height / gridSize;
+      const cellW = rect.width / effectiveGridSize;
+      const cellH = rect.height / effectiveGridSize;
 
       const touch = event.touches[0];
       const colCenter = (touch.clientX - rect.left) / cellW;
@@ -128,7 +213,7 @@ const Cubes = ({
         userActiveRef.current = false;
       }, 3000);
     },
-    [gridSize, tiltAt],
+      [effectiveGridSize, tiltAt],
   );
 
   const onTouchStart = useCallback(() => {
@@ -141,11 +226,11 @@ const Cubes = ({
 
   const onClick = useCallback(
     (event) => {
-      if (!rippleOnClick || !sceneRef.current) return;
+        if (!allowRipple || !sceneRef.current) return;
 
       const rect = sceneRef.current.getBoundingClientRect();
-      const cellW = rect.width / gridSize;
-      const cellH = rect.height / gridSize;
+        const cellW = rect.width / effectiveGridSize;
+        const cellH = rect.height / effectiveGridSize;
 
       const clientX =
         event.clientX ?? (event.touches && event.touches[0]?.clientX);
@@ -198,19 +283,25 @@ const Cubes = ({
           });
         });
     },
-    [rippleOnClick, gridSize, faceColor, rippleColor, rippleSpeed],
+      [allowRipple, effectiveGridSize, faceColor, rippleColor, rippleSpeed],
   );
 
   useEffect(() => {
-    if (!autoAnimate || !sceneRef.current) return undefined;
+      if (!shouldAutoAnimate || !sceneRef.current) {
+        if (simRAFRef.current != null) {
+          cancelAnimationFrame(simRAFRef.current);
+          simRAFRef.current = null;
+        }
+        return undefined;
+      }
 
     simPosRef.current = {
-      x: Math.random() * gridSize,
-      y: Math.random() * gridSize,
+        x: Math.random() * effectiveGridSize,
+        y: Math.random() * effectiveGridSize,
     };
     simTargetRef.current = {
-      x: Math.random() * gridSize,
-      y: Math.random() * gridSize,
+        x: Math.random() * effectiveGridSize,
+        y: Math.random() * effectiveGridSize,
     };
     const speed = 0.02;
 
@@ -223,8 +314,8 @@ const Cubes = ({
         tiltAt(pos.y, pos.x);
         if (Math.hypot(pos.x - tgt.x, pos.y - tgt.y) < 0.1) {
           simTargetRef.current = {
-            x: Math.random() * gridSize,
-            y: Math.random() * gridSize,
+              x: Math.random() * effectiveGridSize,
+              y: Math.random() * effectiveGridSize,
           };
         }
       }
@@ -237,7 +328,7 @@ const Cubes = ({
         cancelAnimationFrame(simRAFRef.current);
       }
     };
-  }, [autoAnimate, gridSize, tiltAt]);
+    }, [shouldAutoAnimate, effectiveGridSize, tiltAt]);
 
   useEffect(() => {
     const element = sceneRef.current;
@@ -263,61 +354,60 @@ const Cubes = ({
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       if (idleTimerRef.current != null) clearTimeout(idleTimerRef.current);
     };
-  }, [onPointerMove, resetAll, onClick, onTouchMove, onTouchStart, onTouchEnd]);
+    }, [onPointerMove, resetAll, onClick, onTouchMove, onTouchStart, onTouchEnd]);
 
-  const cells = Array.from({ length: gridSize });
-  const sceneStyle = {
-    gridTemplateColumns: cubeSize
-      ? `repeat(${gridSize}, ${cubeSize}px)`
-      : `repeat(${gridSize}, 1fr)`,
-    gridTemplateRows: cubeSize
-      ? `repeat(${gridSize}, ${cubeSize}px)`
-      : `repeat(${gridSize}, 1fr)`,
-    columnGap: colGap,
-    rowGap: rowGap,
-  };
-  const wrapperStyle = {
-    '--cube-face-border': borderStyle,
-    '--cube-face-bg': faceColor,
-    '--cube-face-shadow':
-      shadow === true
-        ? '0 0 6px rgba(0,0,0,.5)'
-        : shadow || 'none',
-    ...(cubeSize
-      ? {
-          width: `${gridSize * cubeSize}px`,
-          height: `${gridSize * cubeSize}px`,
-        }
-      : {}),
-  };
+    const sceneStyle = {
+      gridTemplateColumns: cubeSize
+        ? `repeat(${effectiveGridSize}, ${cubeSize}px)`
+        : `repeat(${effectiveGridSize}, 1fr)`,
+      gridTemplateRows: cubeSize
+        ? `repeat(${effectiveGridSize}, ${cubeSize}px)`
+        : `repeat(${effectiveGridSize}, 1fr)`,
+      columnGap: effectiveColGap,
+      rowGap: effectiveRowGap,
+    };
+    const wrapperStyle = {
+      '--cube-face-border': borderStyle,
+      '--cube-face-bg': faceColor,
+      '--cube-face-shadow':
+        shadow === true
+          ? '0 0 6px rgba(0,0,0,.5)'
+          : shadow || 'none',
+      ...(cubeSize
+        ? {
+            width: `${effectiveGridSize * cubeSize}px`,
+            height: `${effectiveGridSize * cubeSize}px`,
+          }
+        : {}),
+    };
 
-  return (
-    <div className="default-animation" style={wrapperStyle}>
-      <div
-        ref={sceneRef}
-        className="default-animation--scene"
-        style={sceneStyle}
-      >
-        {cells.map((_, r) =>
-          cells.map((__, c) => (
-            <div
-              key={`${r}-${c}`}
-              className="cube"
-              data-row={r}
-              data-col={c}
-            >
-              <div className="cube-face cube-face--top" />
-              <div className="cube-face cube-face--bottom" />
-              <div className="cube-face cube-face--left" />
-              <div className="cube-face cube-face--right" />
-              <div className="cube-face cube-face--front" />
-              <div className="cube-face cube-face--back" />
-            </div>
-          )),
-        )}
+    return (
+      <div className="default-animation" style={wrapperStyle}>
+        <div
+          ref={sceneRef}
+          className="default-animation--scene"
+          style={sceneStyle}
+        >
+          {cells.map((_, r) =>
+            cells.map((__, c) => (
+              <div
+                key={`${r}-${c}`}
+                className="cube"
+                data-row={r}
+                data-col={c}
+              >
+                <div className="cube-face cube-face--top" />
+                <div className="cube-face cube-face--bottom" />
+                <div className="cube-face cube-face--left" />
+                <div className="cube-face cube-face--right" />
+                <div className="cube-face cube-face--front" />
+                <div className="cube-face cube-face--back" />
+              </div>
+            )),
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
 };
 
 export default Cubes;

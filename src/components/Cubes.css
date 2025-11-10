@@ -10,9 +10,11 @@
 .default-animation {
   position: relative;
   width: min(100%, 420px);
+  max-width: 100%;
   aspect-ratio: 1 / 1;
   height: auto;
   margin: 0 auto;
+  touch-action: manipulation;
 }
 
 .default-animation--scene {
@@ -23,6 +25,7 @@
   row-gap: var(--row-gap);
   perspective: var(--cube-perspective);
   grid-auto-rows: 1fr;
+  will-change: transform;
 }
 
 .cube {
@@ -77,6 +80,12 @@
   transform: rotateY(-90deg) translateX(50%) rotateY(90deg);
 }
 
+@media (max-width: 960px) {
+  .default-animation {
+    width: min(100%, 360px);
+  }
+}
+
 @media (min-width: 768px) {
   .default-animation {
     width: min(100%, 460px);
@@ -85,6 +94,37 @@
 
 @media (max-width: 768px) {
   .default-animation {
-    width: min(100%, 360px);
+    width: min(100%, 320px);
+  }
+  .default-animation--scene {
+    column-gap: 2.5%;
+    row-gap: 2.5%;
+  }
+  .cube::before {
+    top: -22px;
+    right: -22px;
+    bottom: -22px;
+    left: -22px;
+  }
+  .default-animation .cube-face {
+    border-width: 0.75px;
+  }
+}
+
+@media (max-width: 520px) {
+  .default-animation {
+    width: min(100%, 280px);
+  }
+}
+
+@media (max-width: 420px) {
+  .default-animation {
+    width: min(100%, 240px);
+  }
+  .cube::before {
+    top: -14px;
+    right: -14px;
+    bottom: -14px;
+    left: -14px;
   }
 }
