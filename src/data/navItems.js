@@ -3,6 +3,8 @@ const navItems = {
     name: 'WagyDog',
     label: 'WagyDog Protocol',
     description: 'Institutional-grade memecoin infrastructure on BNB Chain.',
+    logo: '/wagydog-logo.png',
+    logoAlt: 'WagyDog logo',
   },
   items: [
     {
