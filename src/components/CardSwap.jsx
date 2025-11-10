@@ -92,27 +92,30 @@ const CardSwap = ({
           )}
         </div>
 
-        {metrics.length > 0 && (
-          <div className="metric-grid">
-            {metrics.map((metric) => (
-              <div
-                key={metric.label}
-                style={{
-                  border: '1px solid rgba(124, 92, 255, 0.2)',
-                  borderRadius: '16px',
-                  padding: '1.1rem',
-                  background: 'rgba(12, 16, 30, 0.75)',
-                  display: 'grid',
-                  gap: '0.45rem',
-                  textAlign: 'center',
-                }}
-              >
-                <span style={{ fontSize: '1.35rem', fontWeight: 700 }}>{metric.value}</span>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{metric.label}</span>
-              </div>
-            ))}
-          </div>
-        )}
+          {metrics.length > 0 && (
+            <div className="metric-grid">
+              {metrics.map((metric) => (
+                <div
+                  key={metric.label}
+                  style={{
+                    border: '1px solid rgba(124, 92, 255, 0.2)',
+                    borderRadius: '16px',
+                    padding: '1.1rem',
+                    background: 'rgba(12, 16, 30, 0.75)',
+                    display: 'grid',
+                    gap: '0.35rem',
+                    textAlign: 'center',
+                  }}
+                >
+                  <span style={{ fontSize: '1.35rem', fontWeight: 700 }}>{metric.value}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{metric.label}</span>
+                  {metric.context && (
+                    <span style={{ fontSize: '0.7rem', color: 'rgba(200, 205, 230, 0.75)' }}>{metric.context}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
       </div>
 
       <div

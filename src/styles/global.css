@@ -147,6 +147,15 @@ button {
   border-color: rgba(124, 92, 255, 0.35);
 }
 
+.connect-wallet-button--compact {
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.connect-wallet-button--compact svg {
+  margin: 0;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -194,6 +203,7 @@ button {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1.5rem;
+  justify-items: center;
 }
 
 .animate-spin {
@@ -242,6 +252,14 @@ button {
     flex-direction: column;
     align-items: stretch;
     gap: 1rem;
+  }
+
+  .metric-grid > * {
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+    margin: 0 auto;
+    padding: clamp(1rem, 6vw, 1.35rem);
   }
 
   .carousel-root .carousel-track {

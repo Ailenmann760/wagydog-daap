@@ -21,17 +21,15 @@ const ICON_MAP = {
   mobile: Smartphone,
 };
 
-const Carousel = ({
-  items = [],
-  autoplay = false,
-  pauseOnHover = false,
-  interval = 6000,
-}) => {
+const Carousel = ({ items = [], autoplay = false, pauseOnHover = false, interval = 6000 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
 
   const safeItems = useMemo(() => items.filter(Boolean), [items]);
   const itemCount = safeItems.length;
+
+  const carouselGap = 'clamp(1rem, 2.5vw, 1.5rem)';
+  const sectionPadding = 'clamp(2rem, 3vw, 2.5rem)';
 
   useEffect(() => {
     if (!autoplay || itemCount <= 1) return undefined;
@@ -70,8 +68,6 @@ const Carousel = ({
     );
   };
 
-  const sectionPadding = 'clamp(2rem, 3vw, 2.5rem)';
-
   return (
     <section
       className="surface-glass carousel-root"
@@ -81,6 +77,9 @@ const Carousel = ({
         background: 'linear-gradient(130deg, rgba(12, 16, 30, 0.92), rgba(24, 30, 52, 0.92))',
         border: '1px solid rgba(124, 92, 255, 0.16)',
         '--carousel-padding': sectionPadding,
+        '--carousel-gap': carouselGap,
+        maxWidth: '100%',
+        overflow: 'hidden',
       }}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -126,15 +125,17 @@ const Carousel = ({
         </div>
       </div>
 
-      <div className="carousel-viewport" style={{ overflow: 'hidden', position: 'relative' }}>
+      <div className="carousel-viewport" style={{ overflow: 'hidden', position: 'relative', maxWidth: '100%' }}>
         <div
           className="carousel-track"
           style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${itemCount}, minmax(0, 1fr))`,
-            gap: '1.5rem',
-            transform: `translateX(calc(-${activeIndex} * (100% + 1.5rem)))`,
+            display: 'flex',
+            flexWrap: 'nowrap',
+            gap: 'var(--carousel-gap)',
+            width: '100%',
+            transform: itemCount > 0 ? `translateX(calc(-${activeIndex} * (100% + var(--carousel-gap))))` : 'translateX(0)',
             transition: 'transform 0.6s ease',
+            willChange: 'transform',
           }}
         >
           {safeItems.map((item, index) => (
@@ -149,6 +150,8 @@ const Carousel = ({
                 minHeight: '220px',
                 display: 'grid',
                 gap: '1rem',
+                flex: '0 0 100%',
+                minWidth: 0,
               }}
             >
               {renderIcon(item.icon)}

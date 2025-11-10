@@ -3,6 +3,7 @@ import { useAccount, useBalance, useReadContract, useWriteContract } from 'wagmi
 import { formatUnits, parseEther } from 'viem';
 import { ArrowRight, Loader } from 'lucide-react';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/blockchain.js';
+import useLivePriceFeed from '../hooks/useLivePriceFeed.js';
 
 const logContractReadError = (context, method) => (error) => {
   console.warn(`[${context}] Failed to read ${method}. Verify contract configuration in config/blockchain.js`, error);
@@ -16,6 +17,7 @@ const SwapComponent = () => {
   const { address, isConnected } = useAccount();
   const [bnbAmount, setBnbAmount] = useState('0.1');
   const { writeContract, isPending, isSuccess, isError } = useWriteContract();
+  const { formatBnbToUsd, formatUsd, isLoading: isPriceLoading } = useLivePriceFeed({ pollInterval: 12_000 });
 
   const parsedBnbAmount = useMemo(() => {
     try {
@@ -94,6 +96,17 @@ const SwapComponent = () => {
 
     return amountAsNumber * tokensPerNative;
   }, [amountOutQuery.data, bnbAmount, tokensPerNative]);
+
+  const estimatedUsdValue = useMemo(() => {
+    const numericAmount = Number.parseFloat(bnbAmount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return 0;
+    return formatBnbToUsd(numericAmount);
+  }, [bnbAmount, formatBnbToUsd]);
+
+  const estimatedUsdDisplay = useMemo(() => {
+    if (!Number.isFinite(estimatedUsdValue) || estimatedUsdValue <= 0) return '≈ $0.00';
+    return formatUsd(estimatedUsdValue, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+  }, [estimatedUsdValue, formatUsd]);
 
   const rateDisplay = useMemo(() => {
     if (amountOutQuery.isFetching) return 'Fetching latest rate…';
@@ -187,10 +200,17 @@ const SwapComponent = () => {
                 background: 'var(--color-bg-alt)',
                 border: '1px solid var(--color-border)',
                 borderRadius: '12px',
-                color: 'var(--color-text-muted)',
+                  color: 'var(--color-text)',
+                  display: 'grid',
+                  gap: '0.35rem',
               }}
             >
-              ~{Number.isFinite(estimatedWagy) ? estimatedWagy.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.0'} WAGY (Estimate)
+                <span style={{ fontWeight: 600 }}>
+                  ~{Number.isFinite(estimatedWagy) ? estimatedWagy.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.0'} WAGY (Estimate)
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  {isPriceLoading ? 'Fetching live USD value…' : `${estimatedUsdDisplay} (Live)`}
+                </span>
             </div>
           </div>
 
