@@ -193,6 +193,34 @@ button {
   backdrop-filter: blur(20px);
 }
 
+.hero-presentation {
+  display: grid;
+  gap: clamp(1.75rem, 4vw, 3rem);
+  align-items: center;
+}
+
+.hero-presentation__content {
+  display: grid;
+  gap: clamp(1rem, 2.5vw, 2rem);
+  max-width: 720px;
+}
+
+.hero-presentation__media {
+  display: flex;
+  justify-content: center;
+  padding: clamp(1rem, 3vw, 2rem) 0;
+}
+
+@media (min-width: 992px) {
+  .hero-presentation {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+  }
+
+  .hero-presentation__media {
+    justify-content: flex-end;
+  }
+}
+
 .card-grid {
   display: grid;
   gap: clamp(1rem, 2.5vw, 1.75rem);

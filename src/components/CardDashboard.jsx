@@ -1,6 +1,7 @@
 import ConnectWalletButton from './ConnectWalletButton.jsx';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import Cubes from './Cubes.jsx';
 
 const CardDashboard = ({
   label,
@@ -40,53 +41,67 @@ const CardDashboard = ({
         gap: '2rem',
       }}
     >
-      <div style={{ display: 'grid', gap: '1.25rem', maxWidth: '720px' }}>
-        {label && (
-          <span className="badge" style={{ width: 'fit-content' }}>
-            {label}
-          </span>
-        )}
-        {heading && <h1 className="headline">{heading}</h1>}
-        {subheading && (
-          <p
-            style={{
-              margin: 0,
-              fontSize: '1.1rem',
-              color: 'var(--color-text-muted)',
-              maxWidth: '58ch',
-            }}
-          >
-            {subheading}
-          </p>
-        )}
-        {description && (
-          <p
-            style={{
-              margin: 0,
-              fontSize: '0.95rem',
-              color: 'rgba(200, 205, 230, 0.8)',
-              maxWidth: '60ch',
-            }}
-          >
-            {description}
-          </p>
-        )}
-        {(cta || secondaryCta) && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-            {cta && (
-              <ConnectWalletButton
-                label={cta.label}
-                style={{ padding: '0.85rem 1.4rem' }}
-              />
-            )}
-            {secondaryCta && (
-              <Link to={secondaryCta.href} className="button-secondary">
-                {secondaryCta.label}
-                <ArrowRight size={16} />
-              </Link>
-            )}
-          </div>
-        )}
+      <div className="hero-presentation">
+        <div className="hero-presentation__content">
+          {label && (
+            <span className="badge" style={{ width: 'fit-content' }}>
+              {label}
+            </span>
+          )}
+          {heading && <h1 className="headline">{heading}</h1>}
+          {subheading && (
+            <p
+              style={{
+                margin: 0,
+                fontSize: '1.1rem',
+                color: 'var(--color-text-muted)',
+                maxWidth: '58ch',
+              }}
+            >
+              {subheading}
+            </p>
+          )}
+          {description && (
+            <p
+              style={{
+                margin: 0,
+                fontSize: '0.95rem',
+                color: 'rgba(200, 205, 230, 0.8)',
+                maxWidth: '60ch',
+              }}
+            >
+              {description}
+            </p>
+          )}
+          {(cta || secondaryCta) && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+              {cta && (
+                <ConnectWalletButton
+                  label={cta.label}
+                  style={{ padding: '0.85rem 1.4rem' }}
+                />
+              )}
+              {secondaryCta && (
+                <Link to={secondaryCta.href} className="button-secondary">
+                  {secondaryCta.label}
+                  <ArrowRight size={16} />
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="hero-presentation__media">
+          <Cubes
+            gridSize={12}
+            radius={3.5}
+            maxAngle={34}
+            cellGap={{ row: 8, col: 8 }}
+            borderStyle="1px solid rgba(124, 92, 255, 0.38)"
+            faceColor="rgba(124, 92, 255, 0.22)"
+            rippleColor="#7c5cff"
+            shadow="0 36px 72px rgba(6, 10, 24, 0.55)"
+          />
+        </div>
       </div>
       {metrics.length > 0 && (
         <div
