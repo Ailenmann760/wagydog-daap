@@ -8,6 +8,7 @@ import {
   BarChart4,
   Workflow,
 } from 'lucide-react';
+import ConnectWalletButton from './ConnectWalletButton.jsx';
 
 const ICON_MAP = {
   flame: Flame,
@@ -78,10 +79,10 @@ const CardSwap = ({
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
           {cta && (
-            <Link to={cta.href} className="button-primary">
-              {cta.label}
-              <ArrowRight size={16} />
-            </Link>
+            <ConnectWalletButton
+              label={cta.label}
+              style={{ padding: '0.85rem 1.4rem' }}
+            />
           )}
           {secondaryCta && (
             <Link to={secondaryCta.href} className="button-secondary">

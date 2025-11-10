@@ -13,6 +13,7 @@ import {
   CandlestickChart,
 } from 'lucide-react';
 import classNames from 'classnames';
+import ConnectWalletButton from './ConnectWalletButton.jsx';
 
 const ICON_MAP = {
   wallet: Wallet,
@@ -211,35 +212,31 @@ const CardNav = ({ brand, items, cta }) => {
                 </div>
               );
             })}
-          </div>
-
-          <div className="nav-cta" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Link
-              to="/marketplace"
-              style={{
-                fontSize: '0.92rem',
-                color: location.pathname === '/marketplace' ? 'var(--color-primary-accent)' : 'var(--color-text-muted)',
-                fontWeight: 600,
-                letterSpacing: '0.02em',
-              }}
-            >
-              Marketplace
-            </Link>
-            <Link
-              to={cta?.href || '/swap'}
-              style={{
-                background: cta?.buttonBgColor || 'var(--color-primary)',
-                color: cta?.buttonTextColor || '#fff',
-                borderRadius: '14px',
-                padding: '0.65rem 1.25rem',
-                fontWeight: 600,
-                letterSpacing: '0.02em',
-                boxShadow: '0 18px 32px -18px rgba(124, 92, 255, 0.75)',
-              }}
-            >
-              {cta?.label || 'Get Started'}
-            </Link>
-          </div>
+            </div>
+            <div className="nav-cta" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <Link
+                to="/marketplace"
+                style={{
+                  fontSize: '0.92rem',
+                  color: location.pathname === '/marketplace' ? 'var(--color-primary-accent)' : 'var(--color-text-muted)',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                Marketplace
+              </Link>
+              <ConnectWalletButton
+                label={cta?.label || 'Launch dApp'}
+                connectedLabel={cta?.connectedLabel}
+                style={{
+                  borderRadius: '14px',
+                  padding: '0.65rem 1.25rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  boxShadow: '0 18px 32px -18px rgba(124, 92, 255, 0.75)',
+                }}
+              />
+            </div>
         </div>
       </nav>
 
