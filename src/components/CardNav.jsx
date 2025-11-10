@@ -90,20 +90,37 @@ const CardNav = ({ brand, items, cta }) => {
               fontWeight: 700,
             }}
           >
-            <div
-              style={{
-                height: '42px',
-                width: '42px',
-                borderRadius: '14px',
-                background: 'linear-gradient(135deg, rgba(124, 92, 255, 0.35), rgba(75, 225, 195, 0.2))',
-                border: '1px solid rgba(124, 92, 255, 0.3)',
-                display: 'grid',
-                placeItems: 'center',
-                boxShadow: '0 16px 32px -18px rgba(124, 92, 255, 0.6)',
-              }}
-            >
-              <Sparkles size={20} />
-            </div>
+              <div
+                style={{
+                  height: '42px',
+                  width: '42px',
+                  borderRadius: '14px',
+                  background: brand?.logo
+                    ? 'linear-gradient(135deg, rgba(124, 92, 255, 0.15), rgba(75, 225, 195, 0.05))'
+                    : 'linear-gradient(135deg, rgba(124, 92, 255, 0.35), rgba(75, 225, 195, 0.2))',
+                  border: '1px solid rgba(124, 92, 255, 0.3)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  boxShadow: '0 16px 32px -18px rgba(124, 92, 255, 0.6)',
+                  overflow: 'hidden',
+                  padding: brand?.logo ? '4px' : 0,
+                }}
+              >
+                {brand?.logo ? (
+                  <img
+                    src={brand.logo}
+                    alt={brand?.logoAlt || `${brand?.name || 'Brand'} logo`}
+                    style={{
+                      height: '100%',
+                      width: '100%',
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 6px 16px rgba(124, 92, 255, 0.35))',
+                    }}
+                  />
+                ) : (
+                  <Sparkles size={20} />
+                )}
+              </div>
             <div>
               <div style={{ fontSize: '1rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'rgba(152, 161, 192, 0.9)' }}>{brand?.label}</div>
               <div style={{ fontSize: '1.35rem', letterSpacing: '-0.02em', color: 'var(--color-text)' }}>{brand?.name}</div>
