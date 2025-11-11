@@ -1,3 +1,8 @@
+/**
+ * Environment Requirements:
+ * - VITE_COINGECKO_API_KEY: Optional CoinGecko API key to improve rate limits when calling the live price feed.
+ * - VITE_COINGECKO_PRO_API_KEY / VITE_COINGECKO_DEMO_API_KEY: Existing keys remain supported for CoinGecko direct access.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const COIN_IDS = {
@@ -67,8 +72,22 @@ const resolvePriceRequestConfig = () => {
   };
 };
 const DEFAULT_REFRESH_INTERVAL = 60_000;
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_RETRIES = 3;
 
 const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+
+let lastPriceData = null;
+
+const sleep = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const getFreshCache = () => {
+  if (!lastPriceData) return null;
+  return Date.now() - lastPriceData.timestamp < CACHE_TTL_MS ? lastPriceData : null;
+};
 
 const useLivePriceFeed = ({ pollInterval = DEFAULT_REFRESH_INTERVAL } = {}) => {
   const mountedRef = useRef(false);
@@ -78,42 +97,100 @@ const useLivePriceFeed = ({ pollInterval = DEFAULT_REFRESH_INTERVAL } = {}) => {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState(null);
 
-  const fetchPrices = useCallback(async () => {
+  const fetchPrices = useCallback(async ({ force = false } = {}) => {
+    if (!mountedRef.current) {
+      return;
+    }
+
+    const cached = !force ? getFreshCache() : null;
+    if (cached) {
+      setBnbPriceUsd(cached.bnbPriceUsd ?? null);
+      setWagyPriceUsd(cached.wagyPriceUsd ?? null);
+      setLastUpdated(new Date(cached.timestamp));
+      setStatus('success');
+      setError(null);
+      return;
+    }
+
     setStatus((previous) => (previous === 'success' ? 'refreshing' : 'loading'));
     setError(null);
 
-    try {
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+      try {
         const requestConfig = resolvePriceRequestConfig();
         const response = await fetch(requestConfig.url, {
           headers: requestConfig.headers,
         });
 
-      if (!response.ok) {
-        throw new Error(`CoinGecko request failed with status ${response.status}`);
-      }
+        if (!response.ok) {
+          const error = new Error(`CoinGecko request failed with status ${response.status}`);
+          if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
+            error.retryable = true;
+          }
+          throw error;
+        }
 
-      const payload = await response.json();
-      if (!mountedRef.current) return;
+        const payload = await response.json();
+        if (!mountedRef.current) return;
 
-      const nextBnbPrice = payload?.[COIN_IDS.BNB]?.usd;
-      if (!isFiniteNumber(nextBnbPrice)) {
-        throw new Error('CoinGecko response missing BNB USD price');
-      }
+        const nextBnbPrice = payload?.[COIN_IDS.BNB]?.usd;
+        if (!isFiniteNumber(nextBnbPrice)) {
+          throw new Error('CoinGecko response missing BNB USD price');
+        }
 
-      const nextProxyPrice = payload?.[COIN_IDS.WAGY_PROXY]?.usd;
+        const nextProxyPrice = payload?.[COIN_IDS.WAGY_PROXY]?.usd;
+        const resolvedProxyPrice = isFiniteNumber(nextProxyPrice) ? nextProxyPrice : null;
 
-      setBnbPriceUsd(nextBnbPrice);
-      setWagyPriceUsd(isFiniteNumber(nextProxyPrice) ? nextProxyPrice : null);
-      setLastUpdated(new Date());
-      setStatus('success');
-    } catch (err) {
-      if (!mountedRef.current) {
+        lastPriceData = {
+          bnbPriceUsd: nextBnbPrice,
+          wagyPriceUsd: resolvedProxyPrice,
+          timestamp: Date.now(),
+        };
+
+        setBnbPriceUsd(nextBnbPrice);
+        setWagyPriceUsd(resolvedProxyPrice);
+        setLastUpdated(new Date(lastPriceData.timestamp));
+        setStatus('success');
+        setError(null);
         return;
-      }
+      } catch (caughtError) {
+        const error = caughtError instanceof Error ? caughtError : new Error('Failed to fetch live price data');
+        const isRetryable =
+          Boolean(error.retryable) ||
+          error.name === 'TypeError' ||
+          error.message?.toLowerCase().includes('network') ||
+          error.message?.toLowerCase().includes('fetch');
 
-      setStatus('error');
-      setError(err instanceof Error ? err : new Error('Failed to fetch live price data'));
+        lastError = error;
+
+        const isLastAttempt = attempt === MAX_RETRIES || !isRetryable;
+        if (isLastAttempt) {
+          break;
+        }
+
+        const backoffDelayMs = 1000 * 2 ** (attempt + 1);
+        await sleep(backoffDelayMs);
+        if (!mountedRef.current) {
+          return;
+        }
+      }
     }
+
+    if (!mountedRef.current) {
+      return;
+    }
+
+    if (lastPriceData) {
+      setBnbPriceUsd(lastPriceData.bnbPriceUsd ?? null);
+      setWagyPriceUsd(lastPriceData.wagyPriceUsd ?? null);
+      setLastUpdated(new Date(lastPriceData.timestamp));
+    }
+
+    setStatus('error');
+    setError(lastError || new Error('Failed to fetch live price data after retries'));
+    console.error('[useLivePriceFeed] Failed to fetch live price data after retries.', lastError);
   }, []);
 
   useEffect(() => {
