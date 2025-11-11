@@ -46,6 +46,7 @@ export const CONTRACT_ABI = [
   { inputs: [], name: 'totalSupply', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
   { inputs: [], name: 'tokensPerNative', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
   { inputs: [{ internalType: 'uint256', name: 'bnbAmount', type: 'uint256' }], name: 'getAmountOut', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+  { inputs: [], name: 'buyTokens', outputs: [], stateMutability: 'payable', type: 'function' },
 ];
 
 export const CHAIN_CONFIG = {
