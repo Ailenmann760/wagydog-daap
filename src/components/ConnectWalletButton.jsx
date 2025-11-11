@@ -2,12 +2,35 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { Wallet } from 'lucide-react';
 import { useAccount, useChainId, useDisconnect, useSwitchChain } from 'wagmi';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { bscTestnet } from 'wagmi/chains';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { IS_WEB3_MODAL_AVAILABLE } from '../config/web3.js';
 
 const truncateAddress = (address) => {
   if (!address) return '';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
+const useWalletModal = () => {
+  if (!IS_WEB3_MODAL_AVAILABLE) {
+    return {
+      isAvailable: false,
+      open: () => {
+        console.warn('[ConnectWalletButton] Web3Modal is not configured. Wallet connection UI is disabled.');
+        if (typeof window !== 'undefined') {
+          window.alert(
+            'Wallet connection is temporarily unavailable on this deployment. Please try again later or contact support.',
+          );
+        }
+      },
+    };
+  }
+
+  const modal = useWeb3Modal();
+  return {
+    ...modal,
+    isAvailable: true,
+  };
 };
 
 const ConnectWalletButton = ({
@@ -24,7 +47,7 @@ const ConnectWalletButton = ({
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
-  const { open } = useWeb3Modal();
+  const { open, isAvailable: isModalAvailable } = useWalletModal();
   const { disconnect } = useDisconnect();
   const [isCompact, setIsCompact] = useState(forceCompact);
   const hasPromptedNetwork = useRef(false);
@@ -55,6 +78,10 @@ const ConnectWalletButton = ({
   );
 
   const handleOpenModal = useCallback(() => {
+    if (!isModalAvailable) {
+      return;
+    }
+
     if (isConnected) {
       open({ view: 'Account' });
       return;
@@ -62,9 +89,13 @@ const ConnectWalletButton = ({
 
     disconnect();
     open({ view: 'Connect' });
-  }, [disconnect, isConnected, open]);
+  }, [disconnect, isConnected, isModalAvailable, open]);
 
   useEffect(() => {
+    if (!isModalAvailable) {
+      return;
+    }
+
     if (!isConnected) {
       hasPromptedNetwork.current = false;
       return;
@@ -87,7 +118,7 @@ const ConnectWalletButton = ({
     } else {
       setTimeout(() => open({ view: 'Networks' }), 200);
     }
-  }, [chainId, isConnected, isSwitchingChain, open, preferredChainId, switchChain]);
+  }, [chainId, isConnected, isModalAvailable, isSwitchingChain, open, preferredChainId, switchChain]);
 
   return (
     <button
