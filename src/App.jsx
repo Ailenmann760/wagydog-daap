@@ -4,6 +4,8 @@ import MainLayout from './layouts/MainLayout.jsx';
 import HomePage from './pages/HomePage.jsx';
 import LegalPage from './components/LegalPage.jsx';
 import ResourcePage from './components/ResourcePage.jsx';
+import SupportPage from './components/SupportPage.jsx';
+import TrustHub from './components/TrustHub.jsx';
 
 const MarketplacePage = lazy(() => import('./pages/MarketplacePage.jsx'));
 const PoolsPage = lazy(() => import('./pages/PoolsPage.jsx'));
@@ -49,6 +51,8 @@ const App = () => (
       />
       <Route path="/legal/terms" element={<LegalPage />} />
       <Route path="/legal/privacy" element={<LegalPage />} />
+      <Route path="/support" element={<SupportPage />} />
+      <Route path="/trust" element={<TrustHub />} />
       <Route
         path="/resources/audit"
         element={
