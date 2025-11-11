@@ -1,50 +1,62 @@
-import { PROJECT_ID, CHAIN_CONFIG } from './blockchain';
-import { http } from 'wagmi';
-import { bscTestnet } from 'wagmi/chains';
-import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react';
+/**
+ * WalletConnect production configuration.
+ *
+ * Required environment variables:
+ * - VITE_WALLETCONNECT_PROJECT_ID (Required for WalletConnect v2)
+ * - VITE_INFURA_API_KEY or VITE_ALCHEMY_API_KEY (For reliable RPC access)
+ *
+ * Values are read via import.meta.env at build/runtime.
+ */
 
-const chain = bscTestnet;
-const chains = [chain];
-const chainId = chain.id;
-const resolvedChainId = Number(CHAIN_CONFIG.chainId);
+const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
+const INFURA_API_KEY = import.meta.env.VITE_INFURA_API_KEY;
+const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY;
 
-if (!Number.isFinite(resolvedChainId) || resolvedChainId !== chainId) {
-  console.warn(
-    `[web3] CHAIN_CONFIG chainId (${CHAIN_CONFIG.chainId}) is out of sync with wagmi chain id (${chainId}).`,
-  );
-}
+const buildRpcUrls = (urls) => urls.filter(Boolean);
 
-const metadata = {
-  name: 'WagyDog dApp',
-  description: 'WagyDog token factory and DeFi control center on BNB Chain',
-  url: 'https://wagydog.io',
-  icons: ['https://wagydog.io/assets/wagydog-logo.png'],
+export const SUPPORTED_CHAINS = [
+  {
+    chainId: 1,
+    name: 'Ethereum Mainnet',
+    rpcUrls: buildRpcUrls([
+      INFURA_API_KEY && `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
+      ALCHEMY_API_KEY && `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
+      'https://cloudflare-eth.com',
+    ]),
+  },
+  {
+    chainId: 137,
+    name: 'Polygon',
+    rpcUrls: buildRpcUrls([
+      INFURA_API_KEY && `https://polygon-mainnet.infura.io/v3/${INFURA_API_KEY}`,
+      ALCHEMY_API_KEY && `https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`,
+      'https://polygon-rpc.com',
+    ]),
+  },
+  {
+    chainId: 1337,
+    name: 'Localhost',
+    rpcUrls: ['http://127.0.0.1:8545'],
+  },
+];
+
+export const WALLET_CONFIG = {
+  projectId: WALLETCONNECT_PROJECT_ID,
+  chains: SUPPORTED_CHAINS.map((chain) => chain.chainId),
+  metadata: {
+    name: 'WagyDog dApp',
+    description: 'WagyDog DeFi experience with WalletConnect integration',
+    url: 'https://wagydog.io',
+    icons: ['https://wagydog.io/assets/wagydog-logo.png'],
+  },
 };
 
-export const config = defaultWagmiConfig({
-  projectId: PROJECT_ID,
-  chains,
-  metadata,
-  transports: {
-    [chainId]: http(CHAIN_CONFIG.rpcUrls[0]),
-  },
-  autoConnect: false,
-  ssr: true,
-});
+if (!WALLETCONNECT_PROJECT_ID) {
+  console.warn('[web3] VITE_WALLETCONNECT_PROJECT_ID is not defined.');
+}
 
-createWeb3Modal({
-  wagmiConfig: config,
-  projectId: PROJECT_ID,
-  chains,
-  defaultChain: chain,
-  enableAnalytics: true,
-  featuredWalletIds: ['metaMask', 'trust', 'okx', 'phantom', 'coin98'],
-  themeVariables: {
-    '--w3m-color-mix': 'var(--color-primary)',
-    '--w3m-color-mix-strength': 40,
-    '--w3m-font-family': 'Inter, sans-serif',
-    '--w3m-accent-color': 'var(--color-primary)',
-    '--w3m-button-border-radius': '12px',
-    '--w3m-background-color': 'var(--color-bg-alt)',
-  },
-});
+if (!INFURA_API_KEY && !ALCHEMY_API_KEY) {
+  console.warn(
+    '[web3] Neither VITE_INFURA_API_KEY nor VITE_ALCHEMY_API_KEY is defined. RPC reliability may be impacted.',
+  );
+}
