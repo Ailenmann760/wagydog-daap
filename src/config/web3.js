@@ -17,6 +17,35 @@ const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 const INFURA_API_KEY = import.meta.env.VITE_INFURA_API_KEY;
 const ALCHEMY_API_KEY = import.meta.env.VITE_ALCHEMY_API_KEY;
 
+const DEFAULT_SITE_URL = 'https://wagydog.netlify.app';
+
+const stripTrailingSlash = (value) => (value ? value.replace(/\/$/, '') : value);
+
+const resolveSiteUrl = () => {
+  const envValue = stripTrailingSlash(import.meta.env.VITE_SITE_URL?.trim());
+  if (envValue) {
+    return envValue;
+  }
+
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return stripTrailingSlash(window.location.origin);
+  }
+
+  return DEFAULT_SITE_URL;
+};
+
+const SITE_URL = resolveSiteUrl();
+
+const resolveIconUrl = () => {
+  try {
+    return new URL('/wagydog-logo.png', `${SITE_URL}/`).toString();
+  } catch (_error) {
+    return `${SITE_URL}/wagydog-logo.png`;
+  }
+};
+
+const SITE_ICON_URL = resolveIconUrl();
+
 export const IS_WEB3_MODAL_AVAILABLE = Boolean(WALLETCONNECT_PROJECT_ID);
 
 const buildRpcUrls = (urls) => urls.filter(Boolean);
@@ -60,8 +89,8 @@ export const WALLET_CONFIG = {
   metadata: {
     name: 'WagyDog dApp',
     description: 'WagyDog DeFi experience with WalletConnect integration',
-    url: 'https://wagydog.io',
-    icons: ['https://wagydog.io/assets/wagydog-logo.png'],
+    url: SITE_URL,
+    icons: [SITE_ICON_URL],
   },
 };
 

@@ -11,6 +11,54 @@ const liquidityEndpoint =
 const liquidityApiKey = import.meta.env.VITE_LIQUIDITY_LOCKED_API_KEY?.trim();
 const liquidityPairOverride = import.meta.env.VITE_LIQUIDITY_PAIR_ADDRESS?.trim()?.toLowerCase();
 
+const derivePairAddressFromEndpoint = (endpoint) => {
+  if (!endpoint) return null;
+
+  try {
+    const url = endpoint.startsWith('http')
+      ? new URL(endpoint)
+      : new URL(endpoint, 'http://localhost');
+    const param = url.searchParams.get('pairAddress');
+    return param?.trim()?.toLowerCase() || null;
+  } catch (error) {
+    console.debug('[useLiquidityLocked] Failed to inspect liquidity endpoint for pairAddress', error);
+    return null;
+  }
+};
+
+const pairAddressFromEndpoint = derivePairAddressFromEndpoint(liquidityEndpoint);
+const resolvedLiquidityPairAddress = liquidityPairOverride || pairAddressFromEndpoint;
+
+const LIQUIDITY_CONFIGURATION = (() => {
+  if (!liquidityEndpoint) {
+    return {
+      isConfigured: false,
+      code: 'missing_endpoint',
+      reason: 'Liquidity endpoint is not configured. Set VITE_LIQUIDITY_LOCKED_URL.',
+      resolvedPairAddress: null,
+    };
+  }
+
+  if (!resolvedLiquidityPairAddress) {
+    return {
+      isConfigured: false,
+      code: 'missing_pair_address',
+      reason:
+        'Liquidity pair address is not configured. Provide VITE_LIQUIDITY_PAIR_ADDRESS or append ?pairAddress=... to VITE_LIQUIDITY_LOCKED_URL.',
+      resolvedPairAddress: null,
+    };
+  }
+
+  return {
+    isConfigured: true,
+    code: null,
+    reason: null,
+    resolvedPairAddress: resolvedLiquidityPairAddress,
+  };
+})();
+
+let hasLoggedLiquidityConfigurationIssue = false;
+
 let inFlightRequest = null;
 let memoryCache = null;
 
@@ -213,27 +261,30 @@ const isRetryable = (error) => {
 };
 
 const buildRequestUrl = () => {
-  if (!liquidityEndpoint) {
-    throw new Error('Liquidity endpoint is not configured. Set VITE_LIQUIDITY_LOCKED_URL.');
+  if (!LIQUIDITY_CONFIGURATION.isConfigured) {
+    throw new Error(LIQUIDITY_CONFIGURATION.reason);
   }
+
+  const applyPairParam = (url) => {
+    if (
+      LIQUIDITY_CONFIGURATION.resolvedPairAddress &&
+      !url.searchParams.has('pairAddress')
+    ) {
+      url.searchParams.set('pairAddress', LIQUIDITY_CONFIGURATION.resolvedPairAddress);
+    }
+    return url;
+  };
 
   if (liquidityEndpoint.startsWith('http')) {
-    const url = new URL(liquidityEndpoint);
-    if (liquidityPairOverride && !url.searchParams.has('pairAddress')) {
-      url.searchParams.set('pairAddress', liquidityPairOverride);
-    }
-    return url.toString();
+    return applyPairParam(new URL(liquidityEndpoint)).toString();
   }
 
-  if (typeof window === 'undefined') {
-    return liquidityEndpoint;
-  }
+  const origin =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'http://localhost';
 
-  const url = new URL(liquidityEndpoint, window.location.origin);
-  if (liquidityPairOverride && !url.searchParams.has('pairAddress')) {
-    url.searchParams.set('pairAddress', liquidityPairOverride);
-  }
-  return url.toString();
+  return applyPairParam(new URL(liquidityEndpoint, origin)).toString();
 };
 
 const fetchWithTimeout = async (url) => {
@@ -329,6 +380,10 @@ const performNetworkRequest = async () => {
 };
 
 const loadLiquidity = async (force = false) => {
+  if (!LIQUIDITY_CONFIGURATION.isConfigured) {
+    throw new Error(LIQUIDITY_CONFIGURATION.reason);
+  }
+
   const cached = getCachedResult();
 
   if (!shouldRefresh(cached, force)) {
@@ -368,7 +423,7 @@ const useLiquidityLocked = ({ pollInterval = DEFAULT_REFRESH_INTERVAL } = {}) =>
     return true;
   }, []);
 
-  const fetchLockedLiquidity = useCallback(
+const fetchLockedLiquidity = useCallback(
     async (options = { force: false }) => {
       const force = Boolean(options?.force);
 
@@ -380,6 +435,22 @@ const useLiquidityLocked = ({ pollInterval = DEFAULT_REFRESH_INTERVAL } = {}) =>
       }
 
       if (!shouldRefresh(cachedForImmediateUse, force)) {
+        return;
+      }
+
+      if (!LIQUIDITY_CONFIGURATION.isConfigured) {
+        if (!hasLoggedLiquidityConfigurationIssue) {
+          hasLoggedLiquidityConfigurationIssue = true;
+          console.warn('[useLiquidityLocked]', LIQUIDITY_CONFIGURATION.reason);
+          dispatchTelemetry('liquidity_configuration_error', {
+            message: LIQUIDITY_CONFIGURATION.reason,
+            code: LIQUIDITY_CONFIGURATION.code,
+          });
+        }
+
+        const configurationError = new Error(LIQUIDITY_CONFIGURATION.reason);
+        setStatus('error');
+        setError(configurationError);
         return;
       }
 
@@ -408,7 +479,27 @@ const useLiquidityLocked = ({ pollInterval = DEFAULT_REFRESH_INTERVAL } = {}) =>
 
   useEffect(() => {
     mountedRef.current = true;
-    hydrateFromCache();
+    const hadCache = hydrateFromCache();
+
+    if (!LIQUIDITY_CONFIGURATION.isConfigured) {
+      if (!hasLoggedLiquidityConfigurationIssue) {
+        hasLoggedLiquidityConfigurationIssue = true;
+        console.warn('[useLiquidityLocked]', LIQUIDITY_CONFIGURATION.reason);
+        dispatchTelemetry('liquidity_configuration_error', {
+          message: LIQUIDITY_CONFIGURATION.reason,
+          code: LIQUIDITY_CONFIGURATION.code,
+        });
+      }
+
+      if (!hadCache) {
+        setStatus('error');
+        setError(new Error(LIQUIDITY_CONFIGURATION.reason));
+      }
+
+      return () => {
+        mountedRef.current = false;
+      };
+    }
 
     fetchLockedLiquidity({ force: true });
 
