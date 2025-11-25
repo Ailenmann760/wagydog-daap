@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: wagydog-backend
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install && npx prisma generate
+    startCommand: npx prisma db push --accept-data-loss --skip-generate && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_DEFAULT_PASSWORD
+        value: Admin@2024
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: WS_PORT
+        value: 4001
