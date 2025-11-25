@@ -1,0 +1,222 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String       @id @default(uuid())
+  email             String       @unique
+  passwordHash      String?
+  walletAddresses   String       @default("[]")
+  role              String       @default("USER")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  watchlists        WatchList[]
+  adminLogs         AdminLog[]
+}
+
+model Token {
+  id                String       @id @default(uuid())
+  address           String       @unique
+  name              String
+  symbol            String
+  chain             String
+  decimals          Int          @default(18)
+  logoUrl           String?
+  description       String?
+  website           String?
+  twitter           String?
+  telegram          String?
+  discord           String?
+  
+  // Admin moderation
+  isApproved        Boolean      @default(false)
+  isFeatured        Boolean      @default(false)
+  isScam            Boolean      @default(false)
+  warningNote       String?
+  
+  // Metadata
+  tags              String       @default("[]")
+  marketCap         Float?
+  fdv               Float?
+  totalSupply       String?
+  circulatingSupply String?
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  pairsA            Pair[]       @relation("tokenA")
+  pairsB            Pair[]       @relation("tokenB")
+  trending          TrendingToken[]
+  watchlists        WatchList[]
+  adCampaigns       AdCampaign[]
+  
+  @@index([chain])
+  @@index([isApproved])
+  @@index([isFeatured])
+  @@index([symbol])
+}
+
+model Pair {
+  id                String       @id @default(uuid())
+  pairAddress       String       @unique
+  tokenAId          String
+  tokenBId          String
+  dexName           String
+  chain             String
+  
+  // Current metrics
+  priceUSD          Float
+  priceNative       Float
+  liquidity         Float
+  volume24h         Float
+  volume7d          Float?
+  priceChange24h    Float?
+  priceChange7d     Float?
+  
+  // DEX info
+  poolVersion       String?
+  fee               Float?
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  
+  tokenA            Token        @relation("tokenA", fields: [tokenAId], references: [id])
+  tokenB            Token        @relation("tokenB", fields: [tokenBId], references: [id])
+  trades            Trade[]
+  chartData         ChartData[]
+  
+  @@index([chain])
+  @@index([dexName])
+  @@index([volume24h])
+  @@index([liquidity])
+}
+
+model TrendingToken {
+  id                String       @id @default(uuid())
+  tokenId           String
+  rank              Int
+  score             Float
+  timestamp         DateTime     @default(now())
+  
+  token             Token        @relation(fields: [tokenId], references: [id])
+  
+  @@index([timestamp])
+  @@index([rank])
+}
+
+model Trade {
+  id                String       @id @default(uuid())
+  pairId            String
+  type              String
+  amountUSD         Float
+  amountToken       String
+  priceUSD          Float
+  txHash            String?
+  walletAddress     String?
+  timestamp         DateTime     @default(now())
+  
+  pair              Pair         @relation(fields: [pairId], references: [id])
+  
+  @@index([pairId])
+  @@index([timestamp])
+}
+
+model ChartData {
+  id                String       @id @default(uuid())
+  pairId            String
+  timestamp         DateTime
+  interval          String       // "1m", "5m", "1h", "4h", "1d"
+  open              Float
+  high              Float
+  low               Float
+  close             Float
+  volume            Float
+  
+  pair              Pair         @relation(fields: [pairId], references: [id])
+  
+  @@unique([pairId, timestamp, interval])
+  @@index([pairId, interval, timestamp])
+}
+
+model WatchList {
+  id                String       @id @default(uuid())
+  userId            String
+  tokenId           String
+  addedAt           DateTime     @default(now())
+  
+  user              User         @relation(fields: [userId], references: [id])
+  token             Token        @relation(fields: [tokenId], references: [id])
+  
+  @@unique([userId, tokenId])
+  @@index([userId])
+}
+
+model AdminLog {
+  id                String       @id @default(uuid())
+  userId            String
+  action            String
+  details           String?
+  ipAddress         String?
+  timestamp         DateTime     @default(now())
+  
+  user              User         @relation(fields: [userId], references: [id])
+  
+  @@index([timestamp])
+  @@index([userId])
+}
+
+model AdCampaign {
+  id                String       @id @default(uuid())
+  tokenId           String
+  type              String
+  title             String?
+  imageUrl          String?
+  targetUrl         String?
+  
+  // Metrics
+  impressions       Int          @default(0)
+  clicks            Int          @default(0)
+  
+  // Status
+  isActive          Boolean      @default(true)
+  budget            Float?
+  spent             Float        @default(0)
+  
+  startDate         DateTime
+  endDate           DateTime?
+  createdAt         DateTime     @default(now())
+  
+  token             Token        @relation(fields: [tokenId], references: [id])
+  
+  @@index([isActive])
+  @@index([startDate])
+}
+
+model SiteAnalytics {
+  id                String       @id @default(uuid())
+  date              DateTime     @unique
+  pageViews         Int          @default(0)
+  uniqueVisitors    Int          @default(0)
+  searches          Int          @default(0)
+  topTokens         String?      // Array of {tokenId, views}
+  topPairs          String?      // Array of {pairId, views}
+  
+  @@index([date])
+}
+
+model SystemSettings {
+  id                String       @id @default(uuid())
+  key               String       @unique
+  value             String
+  updatedAt         DateTime     @updatedAt
+}
+
+
