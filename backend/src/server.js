@@ -104,14 +104,16 @@ async function initializeDatabase() {
 
 // Start server
 async function startServer() {
-    // Initialize database
-    await initializeDatabase();
-
-    // Start listening
+    // Start listening immediately
     server.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Server running on port ${PORT}`);
         console.log(`📡 WebSocket server ready`);
         console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+        // Initialize database in background (non-blocking)
+        initializeDatabase().catch(err => {
+            console.error('Database initialization error:', err);
+        });
     });
 }
 
