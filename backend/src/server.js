@@ -21,9 +21,14 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Configure CORS properly
+const allowedOrigins = process.env.ALLOWED_ORIGINS || '*';
+const corsOrigin = allowedOrigins === '*' ? '*' : allowedOrigins.split(',').map(o => o.trim());
+
 const io = new Server(server, {
     cors: {
-        origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+        origin: corsOrigin,
         methods: ['GET', 'POST'],
     },
 });
@@ -36,7 +41,7 @@ const PORT = process.env.PORT || 4000;
 // Middleware
 app.use(helmet());
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+    origin: corsOrigin,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
