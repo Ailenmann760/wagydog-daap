@@ -126,7 +126,7 @@ export default function initializeWebSocket(io) {
                 include: {
                     token: {
                         include: {
-                            pairs: {
+                            pairsA: {
                                 take: 1,
                                 orderBy: { volume24h: 'desc' },
                             },
