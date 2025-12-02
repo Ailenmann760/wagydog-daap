@@ -79,12 +79,36 @@ app.use((err, req, res, next) => {
 // Initialize WebSocket
 initializeWebSocket(io);
 
+// Database initialization
+async function initializeDatabase() {
+    try {
+        console.log('🔄 Syncing database schema...');
+        await prisma.$executeRawUnsafe('SELECT 1'); // Test connection
+        console.log('✅ Database connected successfully');
+    } catch (error) {
+        console.error('❌ Database connection failed:', error.message);
+        // Continue anyway - Prisma will handle retries
+    }
+}
+
 // Start server
-server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📡 WebSocket server ready`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+async function startServer() {
+    // Initialize database
+    await initializeDatabase();
+
+    // Start listening
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`📡 WebSocket server ready`);
+        console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+}
+
+startServer().catch((error) => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
 });
+
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {

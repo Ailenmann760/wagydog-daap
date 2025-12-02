@@ -5,7 +5,7 @@ services:
     region: singapore
     plan: free
     buildCommand: npm install && npx prisma generate
-    startCommand: npx prisma db push --accept-data-loss --skip-generate && npm start
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
