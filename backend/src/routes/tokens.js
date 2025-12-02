@@ -111,60 +111,7 @@ router.get('/search', async (req, res) => {
     }
 });
 
-/**
- * GET /api/tokens/:address
- * Get token details by address
- */
-router.get('/:address', async (req, res) => {
-    try {
-        const { address } = req.params;
 
-        const token = await prisma.token.findUnique({
-            where: { address },
-        });
-
-        if (!token) {
-            return res.status(404).json({ error: 'Token not found' });
-        }
-
-        // Get pairs separately
-        const pairsA = await prisma.pair.findMany({
-            where: { tokenAId: token.id },
-            orderBy: { volume24h: 'desc' },
-            take: 5,
-        });
-
-        const pairsB = await prisma.pair.findMany({
-            where: { tokenBId: token.id },
-            orderBy: { volume24h: 'desc' },
-            take: 5,
-        });
-
-        const allPairs = [...pairsA, ...pairsB].sort((a, b) => b.volume24h - a.volume24h);
-
-        // Increment view count in analytics (async, don't wait)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        prisma.siteAnalytics.upsert({
-            where: { date: today },
-            create: { date: today, pageViews: 1 },
-            update: { pageViews: { increment: 1 } },
-        }).catch(console.error);
-
-        res.json({
-            success: true,
-            data: {
-                ...token,
-                pairs: allPairs,
-                _count: { watchlists: 0 },
-            },
-        });
-    } catch (error) {
-        console.error('Error fetching token:', error);
-        res.status(500).json({ error: 'Failed to fetch token' });
-    }
-});
 
 /**
  * GET /api/tokens/lists/gainers
@@ -279,6 +226,62 @@ router.get('/lists/losers', async (req, res) => {
     } catch (error) {
         console.error('Error fetching losers:', error);
         res.status(500).json({ error: 'Failed to fetch losers' });
+    }
+});
+
+/**
+ * GET /api/tokens/:address
+ * Get token details by address
+ * NOTE: This MUST be the LAST route to avoid matching static paths
+ */
+router.get('/:address', async (req, res) => {
+    try {
+        const { address } = req.params;
+
+        const token = await prisma.token.findUnique({
+            where: { address },
+        });
+
+        if (!token) {
+            return res.status(404).json({ error: 'Token not found' });
+        }
+
+        // Get pairs separately
+        const pairsA = await prisma.pair.findMany({
+            where: { tokenAId: token.id },
+            orderBy: { volume24h: 'desc' },
+            take: 5,
+        });
+
+        const pairsB = await prisma.pair.findMany({
+            where: { tokenBId: token.id },
+            orderBy: { volume24h: 'desc' },
+            take: 5,
+        });
+
+        const allPairs = [...pairsA, ...pairsB].sort((a, b) => b.volume24h - a.volume24h);
+
+        // Increment view count in analytics (async, don't wait)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        prisma.siteAnalytics.upsert({
+            where: { date: today },
+            create: { date: today, pageViews: 1 },
+            update: { pageViews: { increment: 1 } },
+        }).catch(console.error);
+
+        res.json({
+            success: true,
+            data: {
+                ...token,
+                pairs: allPairs,
+                _count: { watchlists: 0 },
+            },
+        });
+    } catch (error) {
+        console.error('Error fetching token:', error);
+        res.status(500).json({ error: 'Failed to fetch token' });
     }
 });
 
