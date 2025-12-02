@@ -56,6 +56,17 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// Root route
+app.get('/', (req, res) => {
+    res.json({
+        message: 'Wagydog Backend is running 🚀',
+        endpoints: {
+            health: '/api/health',
+            docs: 'https://wagydog-daap.onrender.com/docs'
+        }
+    });
+});
+
 // API Routes
 app.use('/api/tokens', tokenRoutes);
 app.use('/api/pairs', pairRoutes);
