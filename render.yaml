@@ -1,0 +1,60 @@
+services:
+  # BACKEND SERVICE
+  - type: web
+    name: wagydog-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate
+    startCommand: npx prisma migrate deploy && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: wagydog-db
+          property: connectionString
+      - key: ALLOWED_ORIGINS
+        value: https://wagydog.com,https://www.wagydog.com
+    autoDeploy: false
+
+  # FRONTEND SERVICE
+  - type: web
+    name: wagydog-frontend
+    runtime: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: wagydog-backend
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_WS_URL
+        fromService:
+          type: web
+          name: wagydog-backend
+          envVarKey: RENDER_EXTERNAL_URL 
+          # Note: In client code, replace https:// with wss:// if needed or use relative paths if proxying
+      - key: NEXT_PUBLIC_ENABLE_TRADING
+        value: false
+      - key: NEXT_PUBLIC_ENABLE_ANALYTICS
+        value: true
+    customDomains:
+      - wagydog.com
+      - www.wagydog.com
+    autoDeploy: false
+
+databases:
+  - name: wagydog-db
+    databaseName: wagydog
+    user: wagydog_user
+    plan: free
