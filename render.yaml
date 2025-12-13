@@ -20,7 +20,7 @@ services:
           property: connectionString
       - key: ALLOWED_ORIGINS
         value: https://wagydog.com,https://www.wagydog.com
-    autoDeploy: false
+    autoDeploy: true
 
   # FRONTEND SERVICE
   - type: web
@@ -51,7 +51,7 @@ services:
     customDomains:
       - wagydog.com
       - www.wagydog.com
-    autoDeploy: false
+    autoDeploy: true
 
 databases:
   - name: wagydog-db
