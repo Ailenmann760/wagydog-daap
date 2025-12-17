@@ -3,8 +3,8 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
 
-  // For Netlify deployment
-  output: 'export',
+  // Remove 'output: export' for Render - we need server mode
+  // output: 'export', // Only enable for Netlify static export
 
   images: {
     unoptimized: true,
