@@ -48,9 +48,10 @@ services:
         value: false
       - key: NEXT_PUBLIC_ENABLE_ANALYTICS
         value: true
-    customDomains:
-      - wagydog.com
-      - www.wagydog.com
+    # NOTE: Custom domains require a paid plan. Add manually in Render dashboard after upgrading.
+    # customDomains:
+    #   - wagydog.com
+    #   - www.wagydog.com
     autoDeploy: true
 
 databases:
