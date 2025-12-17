@@ -2,8 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import ChainSelector from '@/components/ui/ChainSelector';
-import PairTable from '@/components/market/PairTable';
+import ChainSelector from '../../components/ui/ChainSelector';
+import PairTable from '../../components/market/PairTable';
 
 export default function PairsPage() {
     const { data, isLoading } = useQuery({

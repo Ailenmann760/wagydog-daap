@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { BarChart3, Layers, DollarSign, Activity } from 'lucide-react';
-import ChainSelector from '@/components/ui/ChainSelector';
+import ChainSelector from '../../components/ui/ChainSelector';
 
 export default function AnalyticsPage() {
     const { data, isLoading } = useQuery({

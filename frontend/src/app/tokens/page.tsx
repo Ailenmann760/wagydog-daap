@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { TrendingUp, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import ChainSelector from '@/components/ui/ChainSelector';
-import TokenCard from '@/components/ui/TokenCard';
+import ChainSelector from '../../components/ui/ChainSelector';
+import TokenCard from '../../components/ui/TokenCard';
 import clsx from 'clsx';
 
 const TABS = [
