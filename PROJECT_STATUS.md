@@ -126,7 +126,7 @@ Documentation Pages:    5
 1. **Fix frontend dependency issue** (commands above)
 2. **Test full application locally**
 3. **Switch to PostgreSQL** for production database
-4. **Deploy backend** to Railway/Render
+4. **Deploy to Render** (Use "New > Blueprint" and select `render.yaml`)
 5. **Deploy frontend** to Netlify
 6. **Configure custom domain**
 7. **Update environment variables** for production

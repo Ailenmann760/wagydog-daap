@@ -99,7 +99,7 @@ initializeWebSocket(io);
 async function initializeDatabase() {
     try {
         console.log('🔄 Syncing database schema...');
-        await prisma.$executeRawUnsafe('SELECT 1'); // Test connection
+        await prisma.$queryRaw`SELECT 1`; // Test connection
         console.log('✅ Database connected successfully');
     } catch (error) {
         console.error('❌ Database connection failed:', error.message);
