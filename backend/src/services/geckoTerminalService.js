@@ -162,17 +162,39 @@ function normalizePool(pool, network) {
     const attrs = pool.attributes || pool;
     const relationships = pool.relationships || {};
 
-    const baseToken = relationships.base_token?.data;
-    const quoteToken = relationships.quote_token?.data;
+    const baseTokenRel = relationships.base_token?.data;
+    const quoteTokenRel = relationships.quote_token?.data;
 
     // Calculate age in seconds
     const createdAt = attrs.pool_created_at || attrs.created_at;
     const ageSeconds = createdAt ? Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000) : null;
 
+    // Extract token symbols from pool name if attributes are missing
+    // Pool name format is typically "BASE / QUOTE" (e.g., "PEPE / WETH")
+    let baseSymbol = 'TOKEN';
+    let quoteSymbol = 'QUOTE';
+
+    // Try to get from direct attributes first
+    if (attrs.base_token_symbol) {
+        baseSymbol = attrs.base_token_symbol;
+    }
+    if (attrs.quote_token_symbol) {
+        quoteSymbol = attrs.quote_token_symbol;
+    }
+
+    // If still default, parse from pool name
+    if ((baseSymbol === 'TOKEN' || quoteSymbol === 'QUOTE') && attrs.name) {
+        const nameParts = attrs.name.split(/\s*\/\s*/);
+        if (nameParts.length >= 2) {
+            baseSymbol = nameParts[0].trim() || baseSymbol;
+            quoteSymbol = nameParts[1].trim() || quoteSymbol;
+        }
+    }
+
     return {
         id: pool.id,
         address: attrs.address || pool.id?.split('_')[1],
-        name: attrs.name || 'Unknown',
+        name: attrs.name || `${baseSymbol} / ${quoteSymbol}`,
         chain: network,
         dex: attrs.dex?.name || attrs.dex_id || 'Unknown DEX',
 
@@ -190,16 +212,16 @@ function normalizePool(pool, network) {
         fdv: parseFloat(attrs.fdv_usd) || 0,
         marketCap: parseFloat(attrs.market_cap_usd) || 0,
 
-        // Token info
+        // Token info - use parsed symbols
         baseToken: {
-            address: baseToken?.id?.split('_')[1] || attrs.base_token_address,
-            symbol: attrs.base_token_symbol || 'TOKEN',
-            name: attrs.base_token_name || 'Unknown Token',
+            address: baseTokenRel?.id?.split('_')[1] || attrs.base_token_address,
+            symbol: baseSymbol,
+            name: attrs.base_token_name || baseSymbol,
         },
         quoteToken: {
-            address: quoteToken?.id?.split('_')[1] || attrs.quote_token_address,
-            symbol: attrs.quote_token_symbol || 'QUOTE',
-            name: attrs.quote_token_name || 'Quote Token',
+            address: quoteTokenRel?.id?.split('_')[1] || attrs.quote_token_address,
+            symbol: quoteSymbol,
+            name: attrs.quote_token_name || quoteSymbol,
         },
 
         // Metadata
