@@ -1,8 +1,8 @@
-import TrendingTokens from '@/components/market/TrendingTokens';
-import NewPairs from '@/components/market/NewPairs';
-import TopMovers from '@/components/market/TopMovers';
-import ChainSelector from '@/components/ui/ChainSelector';
-import StatsBar from '@/components/ui/StatsBar';
+import TrendingTokens from '../components/market/TrendingTokens';
+import NewPairs from '../components/market/NewPairs';
+import TopMovers from '../components/market/TopMovers';
+import ChainSelector from '../components/ui/ChainSelector';
+import StatsBar from '../components/ui/StatsBar';
 
 export default async function HomePage() {
     return (
