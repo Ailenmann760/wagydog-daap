@@ -14,12 +14,15 @@ export default function SocketProvider({ children }) {
     const [connected, setConnected] = useState(false);
 
     useEffect(() => {
-        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4000';
-        const socketInstance = io(wsUrl, {
-            transports: ['websocket'],
+        // Use the API URL and let socket.io handle the protocol
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+        const socketInstance = io(apiUrl, {
+            transports: ['websocket', 'polling'], // Allow fallback to polling
             reconnection: true,
             reconnectionDelay: 1000,
-            reconnectionAttempts: 5,
+            reconnectionAttempts: 10,
+            timeout: 20000,
         });
 
         socketInstance.on('connect', () => {
@@ -27,9 +30,13 @@ export default function SocketProvider({ children }) {
             setConnected(true);
         });
 
-        socketInstance.on('disconnect', () => {
-            console.log('❌ WebSocket disconnected');
+        socketInstance.on('disconnect', (reason) => {
+            console.log('❌ WebSocket disconnected:', reason);
             setConnected(false);
+        });
+
+        socketInstance.on('connect_error', (error) => {
+            console.log('⚠️ WebSocket connection error:', error.message);
         });
 
         setSocket(socketInstance);
