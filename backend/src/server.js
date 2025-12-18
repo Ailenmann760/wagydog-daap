@@ -14,6 +14,7 @@ import pairRoutes from './routes/pairs.js';
 import adminRoutes from './routes/admin.js';
 import portfolioRoutes from './routes/portfolio.js';
 import analyticsRoutes from './routes/analytics.js';
+import setupRoutes from './routes/setup.js';
 
 // Import WebSocket handler
 import initializeWebSocket from './websocket/socketServer.js';
@@ -80,6 +81,7 @@ app.use('/api/pairs', pairRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/setup', setupRoutes);
 
 // 404 handler
 app.use((req, res) => {
