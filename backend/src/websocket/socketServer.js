@@ -1,14 +1,42 @@
-import NodeCache from 'node-cache';
-import { prisma } from '../server.js';
-
-const cache = new NodeCache({ stdTTL: parseInt(process.env.CACHE_TTL) || 300 });
+import geckoService from '../services/geckoTerminalService.js';
+import newTokenDetector from '../services/newTokenDetector.js';
 
 /**
  * Initialize WebSocket server and handle real-time data broadcasting
  */
 export default function initializeWebSocket(io) {
+    // Start the new token detector
+    const stopDetector = newTokenDetector.startDetector({
+        chains: ['ethereum', 'bsc', 'solana', 'base', 'arbitrum'],
+        pollInterval: 15000, // 15 seconds
+        minLiquidity: 1000,
+        maxAge: 3600, // 1 hour
+    });
+
+    // Register callback for new pool discoveries
+    newTokenDetector.onNewPool((pool) => {
+        // Broadcast to all clients subscribed to new pools
+        io.to('newPools').emit('newPool', pool);
+        io.to(`newPools:${pool.chain}`).emit('newPool', pool);
+    });
+
     io.on('connection', (socket) => {
         console.log(`✅ Client connected: ${socket.id}`);
+
+        // Subscribe to new pools (all chains)
+        socket.on('subscribe:newPools', (chain = null) => {
+            if (chain) {
+                socket.join(`newPools:${chain}`);
+                console.log(`Client ${socket.id} subscribed to new pools on ${chain}`);
+            } else {
+                socket.join('newPools');
+                console.log(`Client ${socket.id} subscribed to all new pools`);
+            }
+
+            // Send recent discoveries immediately
+            const recent = newTokenDetector.getRecentDiscoveries(20, chain);
+            socket.emit('recentPools', recent);
+        });
 
         // Subscribe to price updates for specific pairs
         socket.on('subscribe:price', (pairIds) => {
@@ -21,9 +49,10 @@ export default function initializeWebSocket(io) {
         });
 
         // Subscribe to live trades for a pair
-        socket.on('subscribe:trades', (pairId) => {
-            socket.join(`trades:${pairId}`);
-            console.log(`Client ${socket.id} subscribed to trades for ${pairId}`);
+        socket.on('subscribe:trades', (data) => {
+            const { chain, pairAddress } = data;
+            socket.join(`trades:${chain}:${pairAddress}`);
+            console.log(`Client ${socket.id} subscribed to trades for ${pairAddress}`);
         });
 
         // Subscribe to trending tokens
@@ -32,15 +61,30 @@ export default function initializeWebSocket(io) {
             console.log(`Client ${socket.id} subscribed to trending`);
         });
 
+        // Subscribe to a specific chain
+        socket.on('subscribe:chain', (chain) => {
+            socket.join(`chain:${chain}`);
+            console.log(`Client ${socket.id} subscribed to ${chain}`);
+        });
+
         // Unsubscribe handlers
+        socket.on('unsubscribe:newPools', (chain = null) => {
+            if (chain) {
+                socket.leave(`newPools:${chain}`);
+            } else {
+                socket.leave('newPools');
+            }
+        });
+
         socket.on('unsubscribe:price', (pairIds) => {
             if (Array.isArray(pairIds)) {
                 pairIds.forEach(pairId => socket.leave(`price:${pairId}`));
             }
         });
 
-        socket.on('unsubscribe:trades', (pairId) => {
-            socket.leave(`trades:${pairId}`);
+        socket.on('unsubscribe:trades', (data) => {
+            const { chain, pairAddress } = data;
+            socket.leave(`trades:${chain}:${pairAddress}`);
         });
 
         socket.on('disconnect', () => {
@@ -48,98 +92,60 @@ export default function initializeWebSocket(io) {
         });
     });
 
-    // Broadcast price updates every 5 seconds
-    setInterval(async () => {
-        try {
-            // Get all active pairs (in production, only get subscribed pairs)
-            const pairs = await prisma.pair.findMany({
-                take: 50,
-                orderBy: { volume24h: 'desc' },
-                include: {
-                    tokenA: { select: { symbol: true, logoUrl: true } },
-                    tokenB: { select: { symbol: true, logoUrl: true } },
-                },
-            });
-
-            // Simulate price changes for demo (in production, fetch from APIs)
-            const priceUpdates = pairs.map(pair => ({
-                pairId: pair.id,
-                pairAddress: pair.pairAddress,
-                price: pair.priceUSD * (1 + (Math.random() - 0.5) * 0.02), // ±1% change
-                change24h: pair.priceChange24h + (Math.random() - 0.5) * 0.5,
-                volume24h: pair.volume24h,
-                liquidity: pair.liquidity,
-                timestamp: new Date().toISOString(),
-            }));
-
-            // Broadcast to subscribed clients
-            priceUpdates.forEach(update => {
-                io.to(`price:${update.pairId}`).emit('price:update', update);
-            });
-
-        } catch (error) {
-            console.error('Error broadcasting price updates:', error);
-        }
-    }, 5000);
-
-    // Broadcast live trades simulation
-    setInterval(async () => {
-        try {
-            // Simulate random trades for active pairs
-            const randomTradeCount = Math.floor(Math.random() * 5) + 1;
-
-            for (let i = 0; i < randomTradeCount; i++) {
-                const pairs = await prisma.pair.findMany({ take: 10 });
-                if (pairs.length === 0) continue;
-
-                const randomPair = pairs[Math.floor(Math.random() * pairs.length)];
-                const isBuy = Math.random() > 0.5;
-
-                const trade = {
-                    pairId: randomPair.id,
-                    type: isBuy ? 'BUY' : 'SELL',
-                    amountUSD: Math.random() * 10000 + 100,
-                    priceUSD: randomPair.priceUSD * (1 + (Math.random() - 0.5) * 0.01),
-                    timestamp: new Date().toISOString(),
-                    txHash: `0x${Math.random().toString(16).substring(2, 66)}`,
-                };
-
-                // Broadcast to clients subscribed to this pair
-                io.to(`trades:${randomPair.id}`).emit('trade:new', trade);
-            }
-        } catch (error) {
-            console.error('Error broadcasting trades:', error);
-        }
-    }, 3000);
-
     // Broadcast trending updates every 30 seconds
     setInterval(async () => {
         try {
-            const trending = await prisma.trendingToken.findMany({
-                take: 24,
-                orderBy: { rank: 'asc' },
-                where: {
-                    timestamp: {
-                        gte: new Date(Date.now() - 1000 * 60 * 10), // Last 10 minutes
-                    },
-                },
-                include: {
-                    token: {
-                        include: {
-                            pairsA: {
-                                take: 1,
-                                orderBy: { volume24h: 'desc' },
-                            },
-                        },
-                    },
-                },
-            });
-
+            const trending = await geckoService.getTrendingPools(null, 24);
             io.to('trending').emit('trending:update', trending);
         } catch (error) {
             console.error('Error broadcasting trending:', error);
         }
     }, 30000);
 
-    console.log('✅ WebSocket handlers initialized');
+    // Broadcast price updates every 10 seconds
+    setInterval(async () => {
+        try {
+            // Get top pools for price updates
+            const chains = ['ethereum', 'bsc', 'solana'];
+
+            for (const chain of chains) {
+                const pools = await geckoService.getTrendingPools(chain, 20);
+
+                pools.forEach(pool => {
+                    io.to(`price:${pool.address}`).emit('price:update', {
+                        pairId: pool.address,
+                        chain: pool.chain,
+                        price: pool.priceUSD,
+                        change24h: pool.priceChange24h,
+                        change1h: pool.priceChange1h,
+                        volume24h: pool.volume24h,
+                        liquidity: pool.liquidity,
+                        timestamp: new Date().toISOString(),
+                    });
+                });
+
+                // Broadcast to chain subscribers
+                io.to(`chain:${chain}`).emit('chainUpdate', {
+                    chain,
+                    pools: pools.slice(0, 10),
+                    timestamp: new Date().toISOString(),
+                });
+            }
+        } catch (error) {
+            console.error('Error broadcasting price updates:', error);
+        }
+    }, 10000);
+
+    // Broadcast detector stats every minute
+    setInterval(() => {
+        const stats = newTokenDetector.getDetectorStats();
+        io.to('newPools').emit('detectorStats', stats);
+    }, 60000);
+
+    console.log('✅ WebSocket handlers initialized with live data feeds');
+
+    // Return cleanup function
+    return () => {
+        stopDetector();
+    };
 }

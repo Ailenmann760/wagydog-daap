@@ -1,40 +1,32 @@
 import express from 'express';
+import geckoService from '../services/geckoTerminalService.js';
+import newTokenDetector from '../services/newTokenDetector.js';
 import { prisma } from '../server.js';
-import { optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
 /**
  * GET /api/tokens/trending
- * Get trending tokens
+ * Get trending tokens from live API
  */
 router.get('/trending', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 24;
         const chain = req.query.chain;
 
-        const trending = await prisma.trendingToken.findMany({
-            take: limit,
-            orderBy: { rank: 'asc' },
-            where: {
-                timestamp: {
-                    gte: new Date(Date.now() - 1000 * 60 * 30), // Last 30 minutes
-                },
-                ...(chain && { token: { chain } }),
-            },
-            include: {
-                token: true,
-            },
-        });
+        const trending = await geckoService.getTrendingPools(chain, limit);
+
+        // Add snipe scores
+        const withScores = trending.map(pool => ({
+            ...pool,
+            snipeScore: geckoService.calculateSnipeScore(pool),
+        }));
 
         res.json({
             success: true,
-            data: trending.map(t => ({
-                rank: t.rank,
-                score: t.score,
-                token: t.token,
-                mainPair: null, // Simplified for SQLite
-            })),
+            data: withScores,
+            source: 'live',
+            timestamp: new Date().toISOString(),
         });
     } catch (error) {
         console.error('Error fetching trending tokens:', error);
@@ -44,30 +36,92 @@ router.get('/trending', async (req, res) => {
 
 /**
  * GET /api/tokens/new
- * Get newly listed tokens
+ * Get newly listed tokens (live data)
  */
 router.get('/new', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 50;
         const chain = req.query.chain;
+        const minLiquidity = parseFloat(req.query.minLiquidity) || 0;
 
-        const newTokens = await prisma.token.findMany({
-            take: limit,
-            where: {
-                isApproved: true,
-                isScam: false,
-                ...(chain && { chain }),
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+        const newPools = await geckoService.getNewPools(chain, limit * 2);
+
+        // Filter and add snipe scores
+        const filtered = newPools
+            .filter(pool => pool.liquidity >= minLiquidity)
+            .map(pool => ({
+                ...pool,
+                snipeScore: geckoService.calculateSnipeScore(pool),
+            }))
+            .slice(0, limit);
 
         res.json({
             success: true,
-            data: newTokens,
+            data: filtered,
+            source: 'live',
+            timestamp: new Date().toISOString(),
         });
     } catch (error) {
         console.error('Error fetching new tokens:', error);
         res.status(500).json({ error: 'Failed to fetch new tokens' });
+    }
+});
+
+/**
+ * GET /api/tokens/hot
+ * Get "hot" tokens - high volume with recent listing
+ */
+router.get('/hot', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 20;
+        const chain = req.query.chain;
+
+        // Get new pools with high volume
+        const newPools = await geckoService.getNewPools(chain, 100);
+
+        // Filter for hot tokens: new + high volume
+        const hot = newPools
+            .filter(pool => pool.volume24h > 10000 && pool.ageSeconds < 86400)
+            .map(pool => ({
+                ...pool,
+                snipeScore: geckoService.calculateSnipeScore(pool),
+                isHot: true,
+            }))
+            .sort((a, b) => b.volume24h - a.volume24h)
+            .slice(0, limit);
+
+        res.json({
+            success: true,
+            data: hot,
+            source: 'live',
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error) {
+        console.error('Error fetching hot tokens:', error);
+        res.status(500).json({ error: 'Failed to fetch hot tokens' });
+    }
+});
+
+/**
+ * GET /api/tokens/discoveries
+ * Get recently discovered new tokens from detector
+ */
+router.get('/discoveries', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const chain = req.query.chain;
+
+        const discoveries = newTokenDetector.getRecentDiscoveries(limit, chain);
+
+        res.json({
+            success: true,
+            data: discoveries,
+            stats: newTokenDetector.getDetectorStats(),
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error) {
+        console.error('Error fetching discoveries:', error);
+        res.status(500).json({ error: 'Failed to fetch discoveries' });
     }
 });
 
@@ -84,34 +138,18 @@ router.get('/search', async (req, res) => {
             return res.json({ success: true, data: [] });
         }
 
-        const tokens = await prisma.token.findMany({
-            take: limit,
-            where: {
-                isApproved: true,
-                isScam: false,
-                OR: [
-                    { name: { contains: query } },
-                    { symbol: { contains: query } },
-                    { address: { contains: query } },
-                ],
-            },
-            orderBy: [
-                { isFeatured: 'desc' },
-                { marketCap: 'desc' },
-            ],
-        });
+        const results = await geckoService.searchTokens(query, limit);
 
         res.json({
             success: true,
-            data: tokens,
+            data: results,
+            source: 'live',
         });
     } catch (error) {
         console.error('Error searching tokens:', error);
         res.status(500).json({ error: 'Failed to search tokens' });
     }
 });
-
-
 
 /**
  * GET /api/tokens/lists/gainers
@@ -120,50 +158,14 @@ router.get('/search', async (req, res) => {
 router.get('/lists/gainers', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 20;
-        const chain = req.query.chain;
+        const chain = req.query.chain || 'ethereum';
 
-        // Get tokens
-        const tokens = await prisma.token.findMany({
-            where: {
-                isApproved: true,
-                isScam: false,
-                ...(chain && { chain }),
-            },
-            take: limit * 3, // Get more to filter
-        });
-
-        // For each token, find best performing pair
-        const tokensWithChange = await Promise.all(
-            tokens.map(async (token) => {
-                const pairs = await prisma.pair.findMany({
-                    where: {
-                        OR: [
-                            { tokenAId: token.id },
-                            { tokenBId: token.id },
-                        ],
-                        priceChange24h: { gt: 0 },
-                    },
-                    orderBy: { priceChange24h: 'desc' },
-                    take: 1,
-                });
-
-                return {
-                    ...token,
-                    pairs,
-                    priceChange: pairs[0]?.priceChange24h || 0,
-                };
-            })
-        );
-
-        // Sort and limit
-        const sorted = tokensWithChange
-            .filter(t => t.priceChange > 0)
-            .sort((a, b) => b.priceChange - a.priceChange)
-            .slice(0, limit);
+        const gainers = await geckoService.getTopGainers(chain, limit);
 
         res.json({
             success: true,
-            data: sorted,
+            data: gainers,
+            source: 'live',
         });
     } catch (error) {
         console.error('Error fetching gainers:', error);
@@ -178,50 +180,14 @@ router.get('/lists/gainers', async (req, res) => {
 router.get('/lists/losers', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 20;
-        const chain = req.query.chain;
+        const chain = req.query.chain || 'ethereum';
 
-        // Get tokens
-        const tokens = await prisma.token.findMany({
-            where: {
-                isApproved: true,
-                isScam: false,
-                ...(chain && { chain }),
-            },
-            take: limit * 3,
-        });
-
-        // For each token, find worst performing pair
-        const tokensWithChange = await Promise.all(
-            tokens.map(async (token) => {
-                const pairs = await prisma.pair.findMany({
-                    where: {
-                        OR: [
-                            { tokenAId: token.id },
-                            { tokenBId: token.id },
-                        ],
-                        priceChange24h: { lt: 0 },
-                    },
-                    orderBy: { priceChange24h: 'asc' },
-                    take: 1,
-                });
-
-                return {
-                    ...token,
-                    pairs,
-                    priceChange: pairs[0]?.priceChange24h || 0,
-                };
-            })
-        );
-
-        // Sort and limit
-        const sorted = tokensWithChange
-            .filter(t => t.priceChange < 0)
-            .sort((a, b) => a.priceChange - b.priceChange)
-            .slice(0, limit);
+        const losers = await geckoService.getTopLosers(chain, limit);
 
         res.json({
             success: true,
-            data: sorted,
+            data: losers,
+            source: 'live',
         });
     } catch (error) {
         console.error('Error fetching losers:', error);
@@ -237,7 +203,30 @@ router.get('/lists/losers', async (req, res) => {
 router.get('/:address', async (req, res) => {
     try {
         const { address } = req.params;
+        const chain = req.query.chain || 'ethereum';
 
+        // Try to get from live API
+        const tokenInfo = await geckoService.getTokenInfo(chain, address);
+
+        if (tokenInfo) {
+            // Increment view count in analytics (async)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            prisma.siteAnalytics.upsert({
+                where: { date: today },
+                create: { date: today, pageViews: 1 },
+                update: { pageViews: { increment: 1 } },
+            }).catch(console.error);
+
+            return res.json({
+                success: true,
+                data: tokenInfo,
+                source: 'live',
+            });
+        }
+
+        // Fallback to database
         const token = await prisma.token.findUnique({
             where: { address },
         });
@@ -246,38 +235,10 @@ router.get('/:address', async (req, res) => {
             return res.status(404).json({ error: 'Token not found' });
         }
 
-        // Get pairs separately
-        const pairsA = await prisma.pair.findMany({
-            where: { tokenAId: token.id },
-            orderBy: { volume24h: 'desc' },
-            take: 5,
-        });
-
-        const pairsB = await prisma.pair.findMany({
-            where: { tokenBId: token.id },
-            orderBy: { volume24h: 'desc' },
-            take: 5,
-        });
-
-        const allPairs = [...pairsA, ...pairsB].sort((a, b) => b.volume24h - a.volume24h);
-
-        // Increment view count in analytics (async, don't wait)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        prisma.siteAnalytics.upsert({
-            where: { date: today },
-            create: { date: today, pageViews: 1 },
-            update: { pageViews: { increment: 1 } },
-        }).catch(console.error);
-
         res.json({
             success: true,
-            data: {
-                ...token,
-                pairs: allPairs,
-                _count: { watchlists: 0 },
-            },
+            data: token,
+            source: 'database',
         });
     } catch (error) {
         console.error('Error fetching token:', error);

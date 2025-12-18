@@ -1,35 +1,25 @@
 import express from 'express';
+import geckoService from '../services/geckoTerminalService.js';
 import { prisma } from '../server.js';
 
 const router = express.Router();
 
 /**
  * GET /api/pairs/trending
- * Get trending pairs
+ * Get trending pairs from live API
  */
 router.get('/trending', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 50;
         const chain = req.query.chain;
 
-        const pairs = await prisma.pair.findMany({
-            take: limit,
-            where: {
-                ...(chain && { chain }),
-            },
-            orderBy: [
-                { volume24h: 'desc' },
-                { liquidity: 'desc' },
-            ],
-            include: {
-                tokenA: true,
-                tokenB: true,
-            },
-        });
+        const trending = await geckoService.getTrendingPools(chain, limit);
 
         res.json({
             success: true,
-            data: pairs,
+            data: trending,
+            source: 'live',
+            timestamp: new Date().toISOString(),
         });
     } catch (error) {
         console.error('Error fetching trending pairs:', error);
@@ -38,13 +28,128 @@ router.get('/trending', async (req, res) => {
 });
 
 /**
- * GET /api/pairs/:pairAddress
- * Get pair details
+ * GET /api/pairs/new
+ * Get newly created pairs
+ */
+router.get('/new', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const chain = req.query.chain;
+
+        const newPools = await geckoService.getNewPools(chain, limit);
+
+        res.json({
+            success: true,
+            data: newPools,
+            source: 'live',
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error) {
+        console.error('Error fetching new pairs:', error);
+        res.status(500).json({ error: 'Failed to fetch new pairs' });
+    }
+});
+
+/**
+ * GET /api/pairs/:chain/:pairAddress
+ * Get pair details from live API
+ */
+router.get('/:chain/:pairAddress', async (req, res) => {
+    try {
+        const { chain, pairAddress } = req.params;
+
+        const poolData = await geckoService.getPoolDetails(chain, pairAddress);
+
+        if (!poolData) {
+            return res.status(404).json({ error: 'Pair not found' });
+        }
+
+        res.json({
+            success: true,
+            data: poolData,
+            source: 'live',
+        });
+    } catch (error) {
+        console.error('Error fetching pair:', error);
+        res.status(500).json({ error: 'Failed to fetch pair' });
+    }
+});
+
+/**
+ * GET /api/pairs/:chain/:pairAddress/chart
+ * Get OHLCV chart data from live API
+ */
+router.get('/:chain/:pairAddress/chart', async (req, res) => {
+    try {
+        const { chain, pairAddress } = req.params;
+        const { interval = 'hour', aggregate = 1 } = req.query;
+
+        // Map interval names
+        const timeframeMap = {
+            '1m': { timeframe: 'minute', aggregate: 1 },
+            '5m': { timeframe: 'minute', aggregate: 5 },
+            '15m': { timeframe: 'minute', aggregate: 15 },
+            '1h': { timeframe: 'hour', aggregate: 1 },
+            '4h': { timeframe: 'hour', aggregate: 4 },
+            '1d': { timeframe: 'day', aggregate: 1 },
+            'minute': { timeframe: 'minute', aggregate: parseInt(aggregate) || 1 },
+            'hour': { timeframe: 'hour', aggregate: parseInt(aggregate) || 1 },
+            'day': { timeframe: 'day', aggregate: parseInt(aggregate) || 1 },
+        };
+
+        const config = timeframeMap[interval] || timeframeMap['1h'];
+
+        const chartData = await geckoService.getPoolOHLCV(
+            chain,
+            pairAddress,
+            config.timeframe,
+            config.aggregate
+        );
+
+        if (chartData.length === 0) {
+            // Generate mock data as fallback
+            const mockData = generateMockChartData(interval);
+            return res.json({
+                success: true,
+                data: mockData,
+                source: 'mock',
+            });
+        }
+
+        res.json({
+            success: true,
+            data: chartData,
+            source: 'live',
+            interval: interval,
+        });
+    } catch (error) {
+        console.error('Error fetching chart data:', error);
+        res.status(500).json({ error: 'Failed to fetch chart data' });
+    }
+});
+
+/**
+ * GET /api/pairs/:pairAddress (legacy - tries multiple chains)
+ * Get pair details by address only
  */
 router.get('/:pairAddress', async (req, res) => {
     try {
         const { pairAddress } = req.params;
+        const chains = ['ethereum', 'bsc', 'solana', 'base', 'arbitrum'];
 
+        // Try each chain until we find the pair
+        for (const chain of chains) {
+            const poolData = await geckoService.getPoolDetails(chain, pairAddress);
+            if (poolData) {
+                return res.json({
+                    success: true,
+                    data: poolData,
+                    source: 'live',
+                });
+            }
+        }
+
+        // Fallback to database
         const pair = await prisma.pair.findUnique({
             where: { pairAddress },
             include: {
@@ -60,6 +165,7 @@ router.get('/:pairAddress', async (req, res) => {
         res.json({
             success: true,
             data: pair,
+            source: 'database',
         });
     } catch (error) {
         console.error('Error fetching pair:', error);
@@ -68,99 +174,11 @@ router.get('/:pairAddress', async (req, res) => {
 });
 
 /**
- * GET /api/pairs/:pairAddress/chart
- * Get OHLCV chart data for a pair
- */
-router.get('/:pairAddress/chart', async (req, res) => {
-    try {
-        const { pairAddress } = req.params;
-        const { interval = '1h', from, to } = req.query;
-
-        const pair = await prisma.pair.findUnique({
-            where: { pairAddress },
-            select: { id: true },
-        });
-
-        if (!pair) {
-            return res.status(404).json({ error: 'Pair not found' });
-        }
-
-        const whereClause = {
-            pairId: pair.id,
-            interval,
-            ...(from && { timestamp: { gte: new Date(parseInt(from)) } }),
-            ...(to && { timestamp: { lte: new Date(parseInt(to)) } }),
-        };
-
-        const chartData = await prisma.chartData.findMany({
-            where: whereClause,
-            orderBy: { timestamp: 'asc' },
-            take: 1000, // Limit to prevent excessive data
-        });
-
-        // If no data exists, generate some mock data for demo
-        if (chartData.length === 0) {
-            const mockData = generateMockChartData(interval, from, to);
-            res.json({
-                success: true,
-                data: mockData,
-                isMock: true,
-            });
-        } else {
-            res.json({
-                success: true,
-                data: chartData,
-                isMock: false,
-            });
-        }
-    } catch (error) {
-        console.error('Error fetching chart data:', error);
-        res.status(500).json({ error: 'Failed to fetch chart data' });
-    }
-});
-
-/**
- * GET /api/pairs/:pairAddress/trades
- * Get recent trades for a pair
- */
-router.get('/:pairAddress/trades', async (req, res) => {
-    try {
-        const { pairAddress } = req.params;
-        const limit = parseInt(req.query.limit) || 50;
-
-        const pair = await prisma.pair.findUnique({
-            where: { pairAddress },
-            select: { id: true },
-        });
-
-        if (!pair) {
-            return res.status(404).json({ error: 'Pair not found' });
-        }
-
-        const trades = await prisma.trade.findMany({
-            where: { pairId: pair.id },
-            take: limit,
-            orderBy: { timestamp: 'desc' },
-        });
-
-        res.json({
-            success: true,
-            data: trades,
-        });
-    } catch (error) {
-        console.error('Error fetching trades:', error);
-        res.status(500).json({ error: 'Failed to fetch trades' });
-    }
-});
-
-/**
  * Helper function to generate mock chart data
  */
-function generateMockChartData(interval, from, to) {
+function generateMockChartData(interval) {
     const data = [];
     const now = Date.now();
-    const fromTime = from ? parseInt(from) : now - 24 * 60 * 60 * 1000; // 24h ago
-    const toTime = to ? parseInt(to) : now;
 
     const intervalMs = {
         '1m': 60 * 1000,
@@ -171,10 +189,12 @@ function generateMockChartData(interval, from, to) {
         '1d': 24 * 60 * 60 * 1000,
     }[interval] || 60 * 60 * 1000;
 
-    let basePrice = 100 + Math.random() * 900; // Random base price
+    const points = 100;
+    let basePrice = 0.001 + Math.random() * 0.1;
 
-    for (let time = fromTime; time <= toTime; time += intervalMs) {
-        const volatility = 0.02; // 2% volatility
+    for (let i = points; i >= 0; i--) {
+        const time = Math.floor((now - i * intervalMs) / 1000);
+        const volatility = 0.02;
         const changePercent = (Math.random() - 0.5) * volatility;
 
         const open = basePrice;
@@ -184,7 +204,7 @@ function generateMockChartData(interval, from, to) {
         const volume = Math.random() * 100000 + 10000;
 
         data.push({
-            timestamp: new Date(time),
+            time,
             open,
             high,
             low,
