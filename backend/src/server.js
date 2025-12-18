@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import http from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
+
+// Backend v1.2.0 - Live crypto data with GeckoTerminal API
 import { PrismaClient } from '@prisma/client';
 
 // Import routes
