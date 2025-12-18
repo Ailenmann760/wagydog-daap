@@ -89,7 +89,7 @@ export default function TrendingTokens({ limit = 24 }) {
                     )}
                 </div>
                 <div className="text-sm text-text-muted">
-                    Updated {new Date().toLocaleTimeString()}
+                    Auto-refreshing
                 </div>
             </div>
 

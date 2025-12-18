@@ -19,7 +19,7 @@ services:
           name: wagydog-db
           property: connectionString
       - key: ALLOWED_ORIGINS
-        value: https://wagydog.com,https://www.wagydog.com
+        value: https://wagydog.com,https://www.wagydog.com,https://wagydog-frontend.onrender.com
     autoDeploy: true
 
   # FRONTEND SERVICE

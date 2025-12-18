@@ -6,27 +6,27 @@ import { Zap, TrendingUp, Sparkles } from 'lucide-react';
 
 export default async function HomePage() {
     return (
-        <div className="space-y-8">
+        <div className="space-y-6 p-4 lg:p-6">
             {/* Hero Section */}
-            <div className="relative overflow-hidden rounded-surface p-8 glass-card">
+            <div className="relative overflow-hidden rounded-2xl p-6 lg:p-8 glass-card">
                 {/* Background glow */}
                 <div className="absolute inset-0 bg-gradient-glow opacity-50" />
 
-                <div className="relative flex items-center justify-between">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
+                <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
                             <Zap className="text-yellow-400" size={32} />
-                            <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                                Wagydog Analytics
+                            <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
+                                Wagydog
                             </h1>
                         </div>
-                        <p className="text-text-muted text-lg max-w-2xl">
+                        <p className="text-text-muted text-base lg:text-lg max-w-xl">
                             Real-time crypto analytics across all chains. Discover new tokens seconds after launch,
                             track trending pairs, and never miss another opportunity.
                         </p>
 
                         {/* Feature badges */}
-                        <div className="flex flex-wrap gap-3 mt-4">
+                        <div className="flex flex-wrap gap-2 mt-4">
                             <span className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/20 text-yellow-400 rounded-full text-sm font-medium">
                                 <Sparkles size={14} />
                                 New Token Alerts
@@ -40,7 +40,9 @@ export default async function HomePage() {
                             </span>
                         </div>
                     </div>
-                    <ChainSelector />
+                    <div className="w-full lg:w-auto">
+                        <ChainSelector />
+                    </div>
                 </div>
             </div>
 

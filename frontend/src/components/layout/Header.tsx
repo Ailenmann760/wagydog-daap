@@ -30,7 +30,7 @@ export default function Header() {
                                 className="object-contain"
                             />
                         </div>
-                        <span className="text-xl font-bold hidden md:block">Wagydog Analytics</span>
+                        <span className="text-xl font-bold hidden md:block">Wagydog</span>
                     </Link>
                 </div>
 
