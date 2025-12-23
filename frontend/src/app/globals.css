@@ -33,6 +33,13 @@ body {
 body {
   color: #f8fafc;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Prevent flex items from overflowing on mobile */
+* {
+  min-width: 0;
 }
 
 a {
