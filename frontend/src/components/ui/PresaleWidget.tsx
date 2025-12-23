@@ -114,6 +114,36 @@ export default function PresaleWidget() {
 
     const progressPercent = Math.min((presaleStats.totalUsd / PRESALE_TARGET) * 100, 100);
 
+    // Copy Address Box with success state
+    const CopyAddressBox = ({ address }: { address: string }) => {
+        const [copied, setCopied] = useState(false);
+
+        const handleCopy = async () => {
+            try {
+                await navigator.clipboard.writeText(address);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        };
+
+        return (
+            <div className="bg-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
+                <code className="text-xs sm:text-sm text-green-400 break-all">{address}</code>
+                <button
+                    onClick={handleCopy}
+                    className={`shrink-0 px-3 py-1.5 rounded text-xs transition flex items-center gap-1 ${copied
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                >
+                    {copied ? '✓ Copied!' : 'Copy'}
+                </button>
+            </div>
+        );
+    };
+
     // Wallet Modal
     const WalletModal = () => (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowWalletModal(false)}>
@@ -263,10 +293,10 @@ export default function PresaleWidget() {
                             onClick={handleContribute}
                             disabled={isPending || isConfirming || !validateAmount(amount).valid}
                             className={`w-full py-4 rounded-xl font-bold text-lg transition ${isPending || isConfirming
-                                    ? 'bg-slate-600 text-slate-400 cursor-wait'
-                                    : validateAmount(amount).valid
-                                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'
-                                        : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                ? 'bg-slate-600 text-slate-400 cursor-wait'
+                                : validateAmount(amount).valid
+                                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'
+                                    : 'bg-slate-700 text-slate-400 cursor-not-allowed'
                                 }`}
                         >
                             {isPending || isConfirming ? 'Processing...' : 'Contribute BNB'}
@@ -274,8 +304,8 @@ export default function PresaleWidget() {
 
                         {txMessage && (
                             <div className={`p-3 rounded-lg text-sm ${txStatus === 'success' ? 'bg-green-500/20 text-green-400' :
-                                    txStatus === 'error' ? 'bg-red-500/20 text-red-400' :
-                                        'bg-blue-500/20 text-blue-400'
+                                txStatus === 'error' ? 'bg-red-500/20 text-red-400' :
+                                    'bg-blue-500/20 text-blue-400'
                                 }`}>
                                 {txMessage}
                             </div>
@@ -296,15 +326,7 @@ export default function PresaleWidget() {
                 {/* Manual Option */}
                 <div className="mt-6 pt-6 border-t border-slate-700">
                     <p className="text-center text-sm text-slate-400 mb-3">Or send BNB/USDT (BEP-20) directly to:</p>
-                    <div className="bg-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
-                        <code className="text-xs sm:text-sm text-green-400 break-all">{PRESALE_WALLET}</code>
-                        <button
-                            onClick={() => navigator.clipboard.writeText(PRESALE_WALLET)}
-                            className="shrink-0 px-3 py-1.5 bg-slate-700 text-slate-300 rounded text-xs hover:bg-slate-600"
-                        >
-                            Copy
-                        </button>
-                    </div>
+                    <CopyAddressBox address={PRESALE_WALLET} />
                 </div>
             </div>
 

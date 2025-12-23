@@ -1,17 +1,17 @@
 'use client';
 
-import { Menu, Search, Wallet } from 'lucide-react';
+import { Menu, Search, Wallet, Check } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import SearchBar from '../ui/SearchBar';
+import { toggleMobileMenu } from './Sidebar';
 
 export default function Header() {
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [showWalletModal, setShowWalletModal] = useState(false);
 
-    // Wagmi hooks - synced across the app
+    // Wagmi hooks
     const { address, isConnected } = useAccount();
     const { connect, connectors, isPending } = useConnect();
     const { disconnect } = useDisconnect();
@@ -21,7 +21,7 @@ export default function Header() {
         setShowWalletModal(false);
     };
 
-    // Wallet Modal
+    // Wallet Modal with better mobile support
     const WalletModal = () => (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowWalletModal(false)}>
             <div className="bg-slate-900 border border-blue-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -72,7 +72,7 @@ export default function Header() {
                 <div className="px-4 lg:px-6 py-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4 flex-1">
                         <button
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            onClick={() => toggleMobileMenu(true)}
                             className="lg:hidden p-2 hover:bg-white/5 rounded-lg transition"
                         >
                             <Menu size={24} />
@@ -97,10 +97,6 @@ export default function Header() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button className="md:hidden p-2 hover:bg-white/5 rounded-lg transition">
-                            <Search size={20} />
-                        </button>
-
                         {isConnected ? (
                             <div className="flex items-center gap-2">
                                 <span className="hidden sm:inline text-sm text-slate-300 bg-slate-800 px-3 py-1.5 rounded-lg">
@@ -125,9 +121,15 @@ export default function Header() {
                         )}
                     </div>
                 </div>
+
+                {/* Mobile Search Bar - Always visible on mobile */}
+                <div className="md:hidden px-4 pb-3">
+                    <SearchBar />
+                </div>
             </header>
 
             {showWalletModal && <WalletModal />}
         </>
     );
 }
+

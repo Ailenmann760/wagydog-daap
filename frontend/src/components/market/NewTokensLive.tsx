@@ -97,24 +97,24 @@ export default function NewTokensLive({ limit = 20 }) {
     };
 
     return (
-        <section className="glass-surface rounded-surface p-6">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
+        <section className="glass-surface rounded-surface p-4 sm:p-6">
+            {/* Header - Stacked on mobile */}
+            <div className="mb-4 sm:mb-6">
+                <div className="flex items-center gap-2 mb-3">
                     <div className="relative">
-                        <Zap className="text-yellow-400" size={24} />
+                        <Zap className="text-yellow-400" size={22} />
                         {connected && (
                             <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                         )}
                     </div>
-                    <h2 className="text-2xl font-bold">🔥 New Tokens (Live)</h2>
+                    <h2 className="text-lg sm:text-2xl font-bold">New Tokens (Live)</h2>
                 </div>
 
-                {/* Chain Filter */}
-                <div className="flex gap-2">
+                {/* Chain Filter - Scrollable on mobile */}
+                <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
                     <button
                         onClick={() => setSelectedChain(null)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${!selectedChain ? 'bg-primary text-white' : 'bg-white/5 hover:bg-white/10'
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap flex-shrink-0 ${!selectedChain ? 'bg-primary text-white' : 'bg-white/5 hover:bg-white/10'
                             }`}
                     >
                         All
@@ -123,7 +123,7 @@ export default function NewTokensLive({ limit = 20 }) {
                         <button
                             key={chain}
                             onClick={() => setSelectedChain(chain)}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${selectedChain === chain ? config.bg + ' text-white' : 'bg-white/5 hover:bg-white/10'
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap flex-shrink-0 ${selectedChain === chain ? config.bg + ' text-white' : 'bg-white/5 hover:bg-white/10'
                                 }`}
                             style={{ borderColor: selectedChain === chain ? config.color : 'transparent' }}
                         >
@@ -137,7 +137,7 @@ export default function NewTokensLive({ limit = 20 }) {
             {isLoading ? (
                 <div className="space-y-3">
                     {[...Array(5)].map((_, i) => (
-                        <div key={i} className="h-16 bg-bg-surface rounded-lg animate-shimmer" />
+                        <div key={i} className="h-20 bg-bg-surface rounded-lg animate-shimmer" />
                     ))}
                 </div>
             ) : (
@@ -145,26 +145,101 @@ export default function NewTokensLive({ limit = 20 }) {
                 <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar">
                     {newPools.map((pool, index) => {
                         const chainConfig = CHAIN_CONFIG[pool.chain] || CHAIN_CONFIG.ethereum;
-                        const isVeryNew = pool.ageSeconds && pool.ageSeconds < 300; // < 5 min
+                        const isVeryNew = pool.ageSeconds && pool.ageSeconds < 300;
 
                         return (
                             <div
                                 key={pool.address || index}
-                                className={`p-4 rounded-lg border transition-all hover:bg-white/5 ${isVeryNew ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-border/50 bg-bg-surface/50'
+                                className={`p-3 sm:p-4 rounded-lg border transition-all hover:bg-white/5 ${isVeryNew ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-border/50 bg-bg-surface/50'
                                     }`}
                             >
-                                <div className="flex items-center justify-between">
+                                {/* Mobile Layout */}
+                                <div className="flex flex-col gap-3 sm:hidden">
+                                    {/* Row 1: Chain + Token Name + Age */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div
+                                                className={`px-2 py-0.5 rounded text-xs font-bold ${chainConfig.bg}`}
+                                                style={{ color: chainConfig.color }}
+                                            >
+                                                {chainConfig.label}
+                                            </div>
+                                            <span className="font-bold text-base truncate max-w-[120px]">
+                                                {pool.baseToken?.symbol || pool.symbol || 'TOKEN'}
+                                            </span>
+                                            {isVeryNew && (
+                                                <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded font-medium animate-pulse">
+                                                    NEW
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-text-muted">
+                                            <Clock size={12} />
+                                            <span className={`text-xs font-medium ${isVeryNew ? 'text-yellow-400' : ''}`}>
+                                                {pool.ageFormatted || formatAge(pool.ageSeconds)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Row 2: Stats + Actions */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div>
+                                                <div className="text-xs text-text-muted">Liquidity</div>
+                                                <div className="font-semibold text-sm">
+                                                    ${pool.liquidity >= 1000
+                                                        ? `${(pool.liquidity / 1000).toFixed(1)}k`
+                                                        : pool.liquidity?.toFixed(0) || '0'}
+                                                </div>
+                                            </div>
+                                            {pool.snipeScore !== undefined && (
+                                                <div>
+                                                    <div className="text-xs text-text-muted">Score</div>
+                                                    <div className={`font-bold text-sm ${getSnipeScoreColor(pool.snipeScore)}`}>
+                                                        {pool.snipeScore}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => copyAddress(pool.baseToken?.address || pool.address)}
+                                                className="p-2 hover:bg-white/10 rounded-lg transition"
+                                            >
+                                                {copiedAddress === (pool.baseToken?.address || pool.address) ? (
+                                                    <Check size={14} className="text-green-400" />
+                                                ) : (
+                                                    <Copy size={14} className="text-text-muted" />
+                                                )}
+                                            </button>
+                                            <a
+                                                href={pool.url || `https://www.geckoterminal.com/${pool.chain}/pools/${pool.address}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-2 hover:bg-white/10 rounded-lg transition"
+                                            >
+                                                <ExternalLink size={14} className="text-text-muted" />
+                                            </a>
+                                            <a
+                                                href={`/token/${pool.baseToken?.address || pool.address}?chain=${pool.chain}`}
+                                                className="flex items-center gap-1 px-2 py-1.5 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg transition text-xs font-medium"
+                                            >
+                                                View <ArrowUpRight size={12} />
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Desktop Layout */}
+                                <div className="hidden sm:flex items-center justify-between">
                                     {/* Token Info */}
                                     <div className="flex items-center gap-3 flex-1">
-                                        {/* Chain Badge */}
                                         <div
                                             className={`px-2 py-1 rounded text-xs font-bold ${chainConfig.bg}`}
                                             style={{ color: chainConfig.color }}
                                         >
                                             {chainConfig.label}
                                         </div>
-
-                                        {/* Token Symbol & Name */}
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-bold text-lg truncate">
