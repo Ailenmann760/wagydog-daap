@@ -7,7 +7,7 @@ import ChainSelector from '../../components/ui/ChainSelector';
 import PairTable from '../../components/market/PairTable';
 
 export default function PairsPage() {
-    const [selectedChain, setSelectedChain] = useState(null); // null = all chains
+    const [selectedChain, setSelectedChain] = useState(null);
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['pairs', 'trending', selectedChain],
@@ -21,10 +21,11 @@ export default function PairsPage() {
 
     return (
         <div className="space-y-6 p-4 lg:p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            {/* Header */}
+            <div className="flex flex-col gap-4">
                 <div>
-                    <h1 className="text-3xl lg:text-4xl font-bold">Pairs</h1>
-                    <p className="text-text-muted mt-2">Discover new and trending trading pairs</p>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">Pairs</h1>
+                    <p className="text-text-muted mt-1 text-sm sm:text-base">Discover new and trending trading pairs</p>
                 </div>
                 <ChainSelector
                     selectedChain={selectedChain}
@@ -32,15 +33,16 @@ export default function PairsPage() {
                 />
             </div>
 
+            {/* Table/Cards */}
             <div className="glass-surface rounded-xl overflow-hidden">
                 {isLoading ? (
-                    <div className="p-8 space-y-4">
+                    <div className="p-4 sm:p-8 space-y-3 sm:space-y-4">
                         {[...Array(8)].map((_, i) => (
-                            <div key={i} className="h-16 bg-white/5 rounded-lg animate-shimmer" />
+                            <div key={i} className="h-20 sm:h-16 bg-white/5 rounded-lg animate-shimmer" />
                         ))}
                     </div>
                 ) : error ? (
-                    <div className="p-8 text-center text-red-400">
+                    <div className="p-6 sm:p-8 text-center text-red-400">
                         Failed to load pairs. Please try again.
                     </div>
                 ) : (

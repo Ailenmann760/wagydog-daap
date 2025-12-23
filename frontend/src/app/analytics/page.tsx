@@ -16,44 +16,46 @@ export default function AnalyticsPage() {
     });
 
     const stats = [
-        { label: 'Total Tokens', value: data?.totalTokens, icon: Activity, color: 'text-blue-400' },
-        { label: 'Total Pairs', value: data?.totalPairs, icon: Layers, color: 'text-purple-400' },
-        { label: '24h Volume', value: data ? `$${(data.total24hVolume / 1000000).toFixed(2)}M` : null, icon: BarChart3, color: 'text-green-400' },
-        { label: 'Total Liquidity', value: data ? `$${(data.totalLiquidity / 1000000).toFixed(2)}M` : null, icon: DollarSign, color: 'text-yellow-400' },
+        { label: 'Total Tokens', value: data?.totalTokens, icon: Activity, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+        { label: 'Total Pairs', value: data?.totalPairs, icon: Layers, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+        { label: '24h Volume', value: data ? `$${(data.total24hVolume / 1000000).toFixed(2)}M` : null, icon: BarChart3, color: 'text-green-400', bg: 'bg-green-500/10' },
+        { label: 'Total Liquidity', value: data ? `$${(data.totalLiquidity / 1000000).toFixed(2)}M` : null, icon: DollarSign, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
     ];
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-between">
+        <div className="space-y-6 p-4 lg:p-6">
+            {/* Header */}
+            <div className="flex flex-col gap-4">
                 <div>
-                    <h1 className="text-3xl lg:text-4xl font-bold">Analytics</h1>
-                    <p className="text-text-muted mt-2">Deep dive into market data</p>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">Analytics</h1>
+                    <p className="text-text-muted mt-1 text-sm sm:text-base">Deep dive into market data</p>
                 </div>
                 <ChainSelector />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Stats Grid - 2 cols on mobile, 4 on desktop */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                 {stats.map((stat, i) => {
                     const Icon = stat.icon;
                     return (
-                        <div key={i} className="glass-surface p-6 rounded-xl">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className={`p-3 rounded-lg bg-white/5 ${stat.color}`}>
-                                    <Icon size={24} />
-                                </div>
+                        <div key={i} className="glass-surface p-4 sm:p-6 rounded-xl">
+                            <div className={`inline-flex p-2 sm:p-3 rounded-lg ${stat.bg} ${stat.color} mb-3`}>
+                                <Icon size={20} className="sm:w-6 sm:h-6" />
                             </div>
-                            <div className="text-text-muted text-sm">{stat.label}</div>
+                            <div className="text-text-muted text-xs sm:text-sm">{stat.label}</div>
                             {isLoading ? (
-                                <div className="h-8 w-24 bg-white/10 rounded mt-1 animate-shimmer" />
+                                <div className="h-6 sm:h-8 w-16 sm:w-24 bg-white/10 rounded mt-1 animate-shimmer" />
                             ) : (
-                                <div className="text-2xl font-bold mt-1">{stat.value || 0}</div>
+                                <div className="text-lg sm:text-2xl font-bold mt-1">{stat.value || 0}</div>
                             )}
                         </div>
                     );
                 })}
             </div>
 
-            <div className="glass-surface p-8 rounded-xl text-center">
+            {/* Charts Placeholder */}
+            <div className="glass-surface p-6 sm:p-8 rounded-xl text-center">
+                <BarChart3 size={48} className="mx-auto text-primary opacity-50 mb-4" />
                 <p className="text-text-muted">More detailed charts coming soon...</p>
             </div>
         </div>

@@ -35,8 +35,10 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* Prevent flex items from overflowing on mobile */
-* {
+/* Prevent flex/grid items from overflowing - more targeted */
+.flex>*,
+.grid>*,
+[class*="flex-"]>* {
   min-width: 0;
 }
 
