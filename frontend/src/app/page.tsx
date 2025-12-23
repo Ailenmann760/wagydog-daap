@@ -2,6 +2,7 @@ import TrendingTokens from '../components/market/TrendingTokens';
 import NewTokensLive from '../components/market/NewTokensLive';
 import ChainSelector from '../components/ui/ChainSelector';
 import StatsBar from '../components/ui/StatsBar';
+import TokenLaunchCountdown from '../components/ui/TokenLaunchCountdown';
 import { Zap, TrendingUp, Sparkles } from 'lucide-react';
 
 export default async function HomePage() {
@@ -46,6 +47,9 @@ export default async function HomePage() {
                 </div>
             </div>
 
+            {/* Token Launch Countdown */}
+            <TokenLaunchCountdown />
+
             {/* Stats Bar */}
             <StatsBar />
 
@@ -57,3 +61,4 @@ export default async function HomePage() {
         </div>
     );
 }
+

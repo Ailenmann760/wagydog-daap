@@ -9,11 +9,20 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata = {
     title: 'Wagydog | Real-Time Crypto Analytics',
     description: 'Real-time crypto analytics platform for tracking tokens, pairs, and market trends across multiple chains.',
+    icons: {
+        icon: '/wagydog-logo.png',
+        shortcut: '/wagydog-logo.png',
+        apple: '/wagydog-logo.png',
+    },
 };
 
 export default function RootLayout({ children }) {
     return (
         <html lang="en">
+            <head>
+                <link rel="icon" href="/wagydog-logo.png" type="image/png" />
+                <link rel="apple-touch-icon" href="/wagydog-logo.png" />
+            </head>
             <body className={inter.className}>
                 <Providers>
                     <div className="flex min-h-screen">
