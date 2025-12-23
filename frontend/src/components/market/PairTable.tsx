@@ -63,130 +63,206 @@ export default function PairTable({ pairs }) {
         return `$${volume.toFixed(0)}`;
     };
 
+    // Shared pair data extraction
+    const getPairData = (pair) => {
+        const baseToken = pair.baseToken || pair.tokenA || {};
+        const quoteToken = pair.quoteToken || pair.tokenB || {};
+        const baseSymbol = baseToken.symbol || 'TOKEN';
+        const quoteSymbol = quoteToken.symbol || 'QUOTE';
+        const chain = pair.chain || 'ethereum';
+        const chainColors = CHAIN_COLORS[chain] || CHAIN_COLORS.ethereum;
+        const isPositive = (pair.priceChange24h || 0) >= 0;
+        const pairAddress = pair.address || pair.pairAddress;
+        const tokenAddress = baseToken.address || pairAddress;
+        const dexUrl = DEX_URLS[chain] || DEX_URLS.ethereum;
+        const chainLogo = CHAIN_LOGOS[chain];
+        const quoteLogo = QUOTE_LOGOS[quoteSymbol] || CHAIN_LOGOS[chain];
+
+        return {
+            baseToken, quoteToken, baseSymbol, quoteSymbol, chain,
+            chainColors, isPositive, pairAddress, tokenAddress, dexUrl, chainLogo, quoteLogo
+        };
+    };
+
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-                <thead>
-                    <tr className="border-b border-white/10 text-text-muted text-sm">
-                        <th className="py-4 px-4 font-medium">Pair</th>
-                        <th className="py-4 px-4 font-medium text-right">Price</th>
-                        <th className="py-4 px-4 font-medium text-right">24h Change</th>
-                        <th className="py-4 px-4 font-medium text-right">24h Volume</th>
-                        <th className="py-4 px-4 font-medium text-right">Liquidity</th>
-                        <th className="py-4 px-4 font-medium text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {pairs.map((pair, index) => {
-                        // Handle both old format (tokenA/tokenB) and new format (baseToken/quoteToken)
-                        const baseToken = pair.baseToken || pair.tokenA || {};
-                        const quoteToken = pair.quoteToken || pair.tokenB || {};
-                        const baseSymbol = baseToken.symbol || 'TOKEN';
-                        const quoteSymbol = quoteToken.symbol || 'QUOTE';
-                        const chain = pair.chain || 'ethereum';
-                        const chainColors = CHAIN_COLORS[chain] || CHAIN_COLORS.ethereum;
-                        const isPositive = (pair.priceChange24h || 0) >= 0;
-                        const pairAddress = pair.address || pair.pairAddress;
-                        const tokenAddress = baseToken.address || pairAddress;
-                        const dexUrl = DEX_URLS[chain] || DEX_URLS.ethereum;
+        <>
+            {/* Mobile Card Layout */}
+            <div className="sm:hidden space-y-3 p-3">
+                {pairs.map((pair, index) => {
+                    const { baseSymbol, quoteSymbol, chain, chainColors, isPositive, pairAddress, tokenAddress, dexUrl, quoteLogo } = getPairData(pair);
 
-                        // Get logos
-                        const chainLogo = CHAIN_LOGOS[chain];
-                        const quoteLogo = QUOTE_LOGOS[quoteSymbol] || CHAIN_LOGOS[chain];
+                    return (
+                        <div key={pairAddress || index} className="bg-bg-surface/50 border border-border/50 rounded-xl p-4">
+                            {/* Row 1: Pair name + Chain + Change */}
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                    {/* Token logos */}
+                                    <div className="flex -space-x-2">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-xs font-bold border-2 border-bg-surface z-10">
+                                            {baseSymbol[0]}
+                                        </div>
+                                        {quoteLogo ? (
+                                            <img
+                                                src={quoteLogo}
+                                                alt={quoteSymbol}
+                                                className="w-8 h-8 rounded-full border-2 border-bg-surface bg-bg-surface"
+                                            />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold border-2 border-bg-surface">
+                                                {quoteSymbol[0]}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <Link
+                                            href={`/token/${pairAddress}?chain=${chain}`}
+                                            className="font-semibold text-sm"
+                                        >
+                                            {baseSymbol}/{quoteSymbol}
+                                        </Link>
+                                        <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${chainColors.bg} ${chainColors.text}`}>
+                                            {chain.toUpperCase()}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className={`flex items-center gap-1 text-sm font-medium ${isPositive ? 'text-success' : 'text-danger'}`}>
+                                    {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                    {Math.abs(pair.priceChange24h || 0).toFixed(2)}%
+                                </div>
+                            </div>
 
-                        return (
-                            <tr
-                                key={pairAddress || index}
-                                className="border-b border-white/5 hover:bg-white/5 transition group"
+                            {/* Row 2: Stats */}
+                            <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
+                                <div>
+                                    <span className="text-text-muted block">Price</span>
+                                    <span className="font-medium">{formatPrice(pair.priceUSD)}</span>
+                                </div>
+                                <div>
+                                    <span className="text-text-muted block">Volume</span>
+                                    <span className="font-medium">{formatVolume(pair.volume24h)}</span>
+                                </div>
+                                <div>
+                                    <span className="text-text-muted block">Liquidity</span>
+                                    <span className="font-medium">{formatVolume(pair.liquidity)}</span>
+                                </div>
+                            </div>
+
+                            {/* Row 3: Action */}
+                            <a
+                                href={`${dexUrl}${tokenAddress}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg text-sm font-medium transition"
                             >
-                                <td className="py-4 px-4">
-                                    <div className="flex items-center gap-3">
-                                        {/* Token logos - stacked with real images */}
-                                        <div className="flex -space-x-2">
-                                            {/* Base token logo - gradient placeholder */}
-                                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-xs font-bold border-2 border-bg-surface z-10">
-                                                {baseSymbol[0]}
-                                            </div>
-                                            {/* Quote token logo - use real image if available */}
-                                            {quoteLogo ? (
-                                                <img
-                                                    src={quoteLogo}
-                                                    alt={quoteSymbol}
-                                                    className="w-9 h-9 rounded-full border-2 border-bg-surface bg-bg-surface"
-                                                    onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.src = '';
-                                                        e.target.style.background = 'linear-gradient(135deg, #374151, #1f2937)';
-                                                    }}
-                                                />
-                                            ) : (
-                                                <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold border-2 border-bg-surface">
-                                                    {quoteSymbol[0]}
+                                Trade <ExternalLink size={14} />
+                            </a>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="border-b border-white/10 text-text-muted text-sm">
+                            <th className="py-4 px-4 font-medium">Pair</th>
+                            <th className="py-4 px-4 font-medium text-right">Price</th>
+                            <th className="py-4 px-4 font-medium text-right">24h Change</th>
+                            <th className="py-4 px-4 font-medium text-right">24h Volume</th>
+                            <th className="py-4 px-4 font-medium text-right">Liquidity</th>
+                            <th className="py-4 px-4 font-medium text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pairs.map((pair, index) => {
+                            const { baseSymbol, quoteSymbol, chain, chainColors, isPositive, pairAddress, tokenAddress, dexUrl, chainLogo, quoteLogo } = getPairData(pair);
+
+                            return (
+                                <tr
+                                    key={pairAddress || index}
+                                    className="border-b border-white/5 hover:bg-white/5 transition group"
+                                >
+                                    <td className="py-4 px-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex -space-x-2">
+                                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-xs font-bold border-2 border-bg-surface z-10">
+                                                    {baseSymbol[0]}
                                                 </div>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <Link
-                                                href={`/token/${pairAddress}?chain=${chain}`}
-                                                className="font-semibold group-hover:text-primary transition"
-                                            >
-                                                {baseSymbol}/{quoteSymbol}
-                                            </Link>
-                                            <div className="flex items-center gap-2 text-xs mt-0.5">
-                                                {chainLogo && (
+                                                {quoteLogo ? (
                                                     <img
-                                                        src={chainLogo}
-                                                        alt={chain}
-                                                        className="w-4 h-4 rounded-full"
-                                                        onError={(e) => { e.target.style.display = 'none'; }}
+                                                        src={quoteLogo}
+                                                        alt={quoteSymbol}
+                                                        className="w-9 h-9 rounded-full border-2 border-bg-surface bg-bg-surface"
                                                     />
-                                                )}
-                                                <span className={`px-1.5 py-0.5 rounded ${chainColors.bg} ${chainColors.text}`}>
-                                                    {chain.toUpperCase()}
-                                                </span>
-                                                {pair.dex && (
-                                                    <span className="text-text-muted">{pair.dex}</span>
+                                                ) : (
+                                                    <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold border-2 border-bg-surface">
+                                                        {quoteSymbol[0]}
+                                                    </div>
                                                 )}
                                             </div>
+                                            <div>
+                                                <Link
+                                                    href={`/token/${pairAddress}?chain=${chain}`}
+                                                    className="font-semibold group-hover:text-primary transition"
+                                                >
+                                                    {baseSymbol}/{quoteSymbol}
+                                                </Link>
+                                                <div className="flex items-center gap-2 text-xs mt-0.5">
+                                                    {chainLogo && (
+                                                        <img
+                                                            src={chainLogo}
+                                                            alt={chain}
+                                                            className="w-4 h-4 rounded-full"
+                                                        />
+                                                    )}
+                                                    <span className={`px-1.5 py-0.5 rounded ${chainColors.bg} ${chainColors.text}`}>
+                                                        {chain.toUpperCase()}
+                                                    </span>
+                                                    {pair.dex && (
+                                                        <span className="text-text-muted">{pair.dex}</span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td className="py-4 px-4 text-right font-medium">
-                                    {formatPrice(pair.priceUSD)}
-                                </td>
-                                <td className="py-4 px-4 text-right">
-                                    <div className={`inline-flex items-center gap-1 ${isPositive ? 'text-success' : 'text-danger'}`}>
-                                        {isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                                        {Math.abs(pair.priceChange24h || 0).toFixed(2)}%
-                                    </div>
-                                </td>
-                                <td className="py-4 px-4 text-right text-text-muted">
-                                    {formatVolume(pair.volume24h)}
-                                </td>
-                                <td className="py-4 px-4 text-right text-text-muted">
-                                    {formatVolume(pair.liquidity)}
-                                </td>
-                                <td className="py-4 px-4 text-right">
-                                    <a
-                                        href={`${dexUrl}${tokenAddress}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg text-sm font-medium transition"
-                                    >
-                                        Trade <ExternalLink size={12} />
-                                    </a>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
+                                    </td>
+                                    <td className="py-4 px-4 text-right font-medium">
+                                        {formatPrice(pair.priceUSD)}
+                                    </td>
+                                    <td className="py-4 px-4 text-right">
+                                        <div className={`inline-flex items-center gap-1 ${isPositive ? 'text-success' : 'text-danger'}`}>
+                                            {isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                                            {Math.abs(pair.priceChange24h || 0).toFixed(2)}%
+                                        </div>
+                                    </td>
+                                    <td className="py-4 px-4 text-right text-text-muted">
+                                        {formatVolume(pair.volume24h)}
+                                    </td>
+                                    <td className="py-4 px-4 text-right text-text-muted">
+                                        {formatVolume(pair.liquidity)}
+                                    </td>
+                                    <td className="py-4 px-4 text-right">
+                                        <a
+                                            href={`${dexUrl}${tokenAddress}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg text-sm font-medium transition"
+                                        >
+                                            Trade <ExternalLink size={12} />
+                                        </a>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
 
             {pairs.length === 0 && (
                 <div className="text-center py-8 text-text-muted">
                     No pairs found
                 </div>
             )}
-        </div>
+        </>
     );
 }
