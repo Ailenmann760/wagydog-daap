@@ -33,17 +33,17 @@ export default function FairlaunchBanner() {
                         className="fairlaunch-ticker-content whitespace-nowrap"
                         style={{ transform: `translateX(-${scrollPosition}%)` }}
                     >
-                        <span className="inline-block px-4">🚀 WAGYDOG TOKEN FAIRLAUNCH</span>
+                        <span className="inline-block px-4">WAGYDOG TOKEN PRESALE</span>
                         <span className="inline-block px-4">•</span>
-                        <span className="inline-block px-4">COMING SOON</span>
+                        <span className="inline-block px-4">PRESALE NOW LIVE</span>
                         <span className="inline-block px-4">•</span>
-                        <span className="inline-block px-4">NO PRESALE</span>
+                        <span className="inline-block px-4">COMMUNITY ROUND OPEN</span>
                         <span className="inline-block px-4">•</span>
-                        <span className="inline-block px-4">100% FAIR DISTRIBUTION</span>
+                        <span className="inline-block px-4">BNB & USDT ACCEPTED</span>
                         <span className="inline-block px-4">•</span>
-                        <span className="inline-block px-4">🚀 WAGYDOG TOKEN FAIRLAUNCH</span>
+                        <span className="inline-block px-4">WAGYDOG TOKEN PRESALE</span>
                         <span className="inline-block px-4">•</span>
-                        <span className="inline-block px-4">COMING SOON</span>
+                        <span className="inline-block px-4">PRESALE NOW LIVE</span>
                         <span className="inline-block px-4">•</span>
                     </div>
                 </div>
@@ -71,8 +71,8 @@ export default function FairlaunchBanner() {
                                 <span className="fairlaunch-title-text">Wagydog Token</span>
                             </h2>
                         </div>
-                        <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-300 mb-4">
-                            Official Fairlaunch
+                        <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400 mb-4">
+                            Community Presale Live
                         </p>
 
                         {/* Countdown Display */}
@@ -92,14 +92,14 @@ export default function FairlaunchBanner() {
                         {/* CTA Badge */}
                         <div className="fairlaunch-cta inline-block">
                             <span className="text-sm sm:text-base font-bold tracking-widest">
-                                STAY TUNED
+                                JOIN PRESALE
                             </span>
                         </div>
                     </div>
 
                     {/* Features List */}
                     <div className="hidden lg:flex flex-col gap-3">
-                        {['No Presale', 'Fair Distribution', 'Community First', 'Locked Liquidity'].map((feature) => (
+                        {['Community Presale', 'Fair Distribution', 'Community First', 'Locked Liquidity'].map((feature) => (
                             <div key={feature} className="fairlaunch-feature">
                                 <span className="fairlaunch-feature-check">✓</span>
                                 <span className="text-sm font-medium text-white/90">{feature}</span>
@@ -110,7 +110,7 @@ export default function FairlaunchBanner() {
 
                 {/* Bottom Features - Mobile */}
                 <div className="flex lg:hidden flex-wrap justify-center gap-2 mt-4 sm:mt-6">
-                    {['No Presale', 'Fair Distribution', 'Locked LP'].map((feature) => (
+                    {['Presale Live', 'Fair Distribution', 'Locked LP'].map((feature) => (
                         <span key={feature} className="fairlaunch-feature-badge">
                             {feature}
                         </span>
