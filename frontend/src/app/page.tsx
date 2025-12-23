@@ -2,6 +2,7 @@ import TrendingTokens from '../components/market/TrendingTokens';
 import NewTokensLive from '../components/market/NewTokensLive';
 import ChainSelector from '../components/ui/ChainSelector';
 import StatsBar from '../components/ui/StatsBar';
+import FairlaunchBanner from '../components/ui/FairlaunchBanner';
 import PresaleWidget from '../components/ui/PresaleWidget';
 import Image from 'next/image';
 
@@ -34,7 +35,7 @@ export default async function HomePage() {
                             track trending pairs, and never miss another opportunity.
                         </p>
 
-                        {/* Feature badges - Clean without icons */}
+                        {/* Feature badges */}
                         <div className="flex flex-wrap gap-2 mt-4">
                             <span className="px-4 py-1.5 bg-yellow-500/15 text-yellow-400 rounded-full text-sm font-medium border border-yellow-500/30">
                                 New Token Alerts
@@ -52,6 +53,9 @@ export default async function HomePage() {
                     </div>
                 </div>
             </div>
+
+            {/* Animated Fairlaunch Banner */}
+            <FairlaunchBanner />
 
             {/* Presale Widget */}
             <PresaleWidget />

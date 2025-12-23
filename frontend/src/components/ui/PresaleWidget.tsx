@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useAccount, useConnect, useDisconnect, useBalance, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
-import { injected, walletConnect } from 'wagmi/connectors';
 import { parseEther, formatEther } from 'viem';
 
 // Presale Configuration
@@ -12,7 +11,7 @@ const PRESALE_TARGET = Number(process.env.NEXT_PUBLIC_PRESALE_TARGET) || 50000;
 const PRESALE_MIN = Number(process.env.NEXT_PUBLIC_PRESALE_MIN) || 20;
 const PRESALE_MAX = Number(process.env.NEXT_PUBLIC_PRESALE_MAX) || 300;
 const WAGY_PER_BNB = Number(process.env.NEXT_PUBLIC_WAGY_PER_BNB) || 630000;
-const BNB_PRICE_USD = 300; // Approximate, could fetch live
+const BNB_PRICE_USD = 300;
 
 interface PresaleStats {
     totalBnb: string;
@@ -29,14 +28,14 @@ export default function PresaleWidget() {
 
     // Wagmi hooks
     const { address, isConnected } = useAccount();
-    const { connect, connectors } = useConnect();
+    const { connect, connectors, isPending: isConnecting } = useConnect();
     const { disconnect } = useDisconnect();
     const { data: balance } = useBalance({ address });
 
     const { data: hash, sendTransaction, isPending } = useSendTransaction();
     const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
-    // Fetch presale stats from backend
+    // Fetch presale stats
     const fetchPresaleStats = useCallback(async () => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
@@ -52,32 +51,28 @@ export default function PresaleWidget() {
 
     useEffect(() => {
         fetchPresaleStats();
-        const interval = setInterval(fetchPresaleStats, 30000); // Refresh every 30s
+        const interval = setInterval(fetchPresaleStats, 30000);
         return () => clearInterval(interval);
     }, [fetchPresaleStats]);
 
-    // Update tx status when transaction is confirmed
     useEffect(() => {
         if (isConfirmed) {
             setTxStatus('success');
-            setTxMessage('Transaction confirmed! Thank you for participating in the presale.');
+            setTxMessage('Transaction confirmed! Thank you for participating!');
             fetchPresaleStats();
         }
     }, [isConfirmed, fetchPresaleStats]);
 
-    // Calculate WAGY tokens for amount
     const calculateTokens = (bnbAmount: string) => {
         const bnb = parseFloat(bnbAmount) || 0;
         return Math.floor(bnb * WAGY_PER_BNB);
     };
 
-    // Calculate USD value
     const calculateUsd = (bnbAmount: string) => {
         const bnb = parseFloat(bnbAmount) || 0;
         return (bnb * BNB_PRICE_USD).toFixed(2);
     };
 
-    // Validate contribution amount
     const validateAmount = (bnbAmount: string): { valid: boolean; error: string } => {
         const bnb = parseFloat(bnbAmount) || 0;
         const usd = bnb * BNB_PRICE_USD;
@@ -91,7 +86,6 @@ export default function PresaleWidget() {
         return { valid: true, error: '' };
     };
 
-    // Handle contribution
     const handleContribute = async () => {
         const validation = validateAmount(amount);
         if (!validation.valid) {
@@ -110,35 +104,54 @@ export default function PresaleWidget() {
         } catch (error) {
             setTxStatus('error');
             setTxMessage('Transaction failed. Please try again.');
-            console.error('Transaction error:', error);
         }
     };
 
-    // Progress percentage
+    const handleConnectWallet = (connector: any) => {
+        connect({ connector });
+        setShowWalletModal(false);
+    };
+
     const progressPercent = Math.min((presaleStats.totalUsd / PRESALE_TARGET) * 100, 100);
 
-    // Render wallet connection modal
+    // Wallet Modal
     const WalletModal = () => (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowWalletModal(false)}>
-            <div className="bg-slate-900 border border-blue-500/30 rounded-2xl p-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
-                <h3 className="text-xl font-bold text-white mb-4">Connect Wallet</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowWalletModal(false)}>
+            <div className="bg-slate-900 border border-blue-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+                <h3 className="text-2xl font-bold text-white mb-2">Connect Wallet</h3>
+                <p className="text-slate-400 text-sm mb-6">Choose your preferred wallet to participate in the presale</p>
+
                 <div className="space-y-3">
                     {connectors.map((connector) => (
                         <button
-                            key={connector.id}
-                            onClick={() => {
-                                connect({ connector });
-                                setShowWalletModal(false);
-                            }}
-                            className="w-full flex items-center gap-3 p-4 bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700"
+                            key={connector.uid}
+                            onClick={() => handleConnectWallet(connector)}
+                            disabled={isConnecting}
+                            className="w-full flex items-center gap-4 p-4 bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700 hover:border-blue-500/50 disabled:opacity-50"
                         >
-                            <span className="text-white font-medium capitalize">{connector.name}</span>
+                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
+                                {connector.name === 'MetaMask' && <span className="text-2xl">🦊</span>}
+                                {connector.name === 'WalletConnect' && <span className="text-2xl">🔗</span>}
+                                {connector.name === 'Injected' && <span className="text-2xl">💼</span>}
+                                {!['MetaMask', 'WalletConnect', 'Injected'].includes(connector.name) && <span className="text-2xl">👛</span>}
+                            </div>
+                            <div className="text-left">
+                                <span className="text-white font-semibold block">
+                                    {connector.name === 'Injected' ? 'Browser Wallet' : connector.name}
+                                </span>
+                                <span className="text-slate-400 text-xs">
+                                    {connector.name === 'MetaMask' && 'Popular browser extension'}
+                                    {connector.name === 'WalletConnect' && 'Trust Wallet, Binance & more'}
+                                    {connector.name === 'Injected' && 'Use your browser wallet'}
+                                </span>
+                            </div>
                         </button>
                     ))}
                 </div>
+
                 <button
                     onClick={() => setShowWalletModal(false)}
-                    className="mt-4 w-full py-2 text-slate-400 hover:text-white transition"
+                    className="mt-6 w-full py-3 text-slate-400 hover:text-white transition border border-slate-700 rounded-xl hover:border-slate-600"
                 >
                     Cancel
                 </button>
@@ -148,7 +161,6 @@ export default function PresaleWidget() {
 
     return (
         <div className="presale-widget relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-2 border-green-500/40">
-            {/* Background effects */}
             <div className="absolute inset-0 bg-gradient-to-br from-green-600/10 via-transparent to-blue-600/10" />
 
             {/* Header */}
@@ -164,10 +176,9 @@ export default function PresaleWidget() {
                         </div>
                     </div>
 
-                    {/* Wallet Button */}
                     {isConnected ? (
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-slate-400">
+                            <span className="text-sm text-slate-400 hidden sm:inline">
                                 {address?.slice(0, 6)}...{address?.slice(-4)}
                             </span>
                             <button
@@ -180,7 +191,7 @@ export default function PresaleWidget() {
                     ) : (
                         <button
                             onClick={() => setShowWalletModal(true)}
-                            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition"
+                            className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold rounded-xl transition shadow-lg shadow-green-500/25"
                         >
                             Connect Wallet
                         </button>
@@ -188,9 +199,9 @@ export default function PresaleWidget() {
                 </div>
             </div>
 
-            {/* Progress Section */}
+            {/* Progress */}
             <div className="relative p-4 sm:p-6">
-                <div className="mb-4">
+                <div className="mb-6">
                     <div className="flex justify-between text-sm mb-2">
                         <span className="text-slate-400">Raised</span>
                         <span className="text-white font-bold">${presaleStats.totalUsd.toLocaleString()} / ${PRESALE_TARGET.toLocaleString()}</span>
@@ -207,7 +218,7 @@ export default function PresaleWidget() {
                     </div>
                 </div>
 
-                {/* Presale Info */}
+                {/* Info */}
                 <div className="grid grid-cols-2 gap-3 mb-6">
                     <div className="bg-slate-800/50 rounded-xl p-3 text-center">
                         <p className="text-xs text-slate-400">Rate</p>
@@ -271,20 +282,20 @@ export default function PresaleWidget() {
                         )}
                     </div>
                 ) : (
-                    <div className="text-center py-6">
+                    <div className="text-center py-8">
                         <p className="text-slate-400 mb-4">Connect your wallet to participate</p>
                         <button
                             onClick={() => setShowWalletModal(true)}
-                            className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition"
+                            className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold rounded-xl transition shadow-lg shadow-green-500/25"
                         >
                             Connect Wallet
                         </button>
                     </div>
                 )}
 
-                {/* Manual Contribution Option */}
+                {/* Manual Option */}
                 <div className="mt-6 pt-6 border-t border-slate-700">
-                    <p className="text-center text-sm text-slate-400 mb-3">Or send BNB/USDT directly to:</p>
+                    <p className="text-center text-sm text-slate-400 mb-3">Or send BNB/USDT (BEP-20) directly to:</p>
                     <div className="bg-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
                         <code className="text-xs sm:text-sm text-green-400 break-all">{PRESALE_WALLET}</code>
                         <button
@@ -294,11 +305,9 @@ export default function PresaleWidget() {
                             Copy
                         </button>
                     </div>
-                    <p className="text-center text-xs text-slate-500 mt-2">BEP-20 Network Only (BSC)</p>
                 </div>
             </div>
 
-            {/* Wallet Modal */}
             {showWalletModal && <WalletModal />}
         </div>
     );
