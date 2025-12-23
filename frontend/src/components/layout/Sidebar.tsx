@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, TrendingUp, Layers, Star, BarChart3, X } from 'lucide-react';
+import { Home, TrendingUp, Layers, Star, BarChart3, X, Flame, Heart } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -10,8 +10,10 @@ const navItems = [
     { href: '/', icon: Home, label: 'Overview' },
     { href: '/tokens', icon: TrendingUp, label: 'Tokens' },
     { href: '/pairs', icon: Layers, label: 'Pairs' },
+    { href: '/degen', icon: Flame, label: 'Degen Tool' },
     { href: '/watchlist', icon: Star, label: 'Watchlist' },
     { href: '/analytics', icon: BarChart3, label: 'Analytics' },
+    { href: '/donate', icon: Heart, label: 'Donate' },
 ];
 
 // Create a global state for mobile menu
