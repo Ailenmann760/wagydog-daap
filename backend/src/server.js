@@ -15,6 +15,7 @@ import adminRoutes from './routes/admin.js';
 import portfolioRoutes from './routes/portfolio.js';
 import analyticsRoutes from './routes/analytics.js';
 import setupRoutes from './routes/setup.js';
+import presaleRoutes from './routes/presale.js';
 
 // Import WebSocket handler
 import initializeWebSocket from './websocket/socketServer.js';
@@ -82,6 +83,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/setup', setupRoutes);
+app.use('/api/presale', presaleRoutes);
 
 // 404 handler
 app.use((req, res) => {

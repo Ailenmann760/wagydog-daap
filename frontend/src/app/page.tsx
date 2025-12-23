@@ -2,7 +2,7 @@ import TrendingTokens from '../components/market/TrendingTokens';
 import NewTokensLive from '../components/market/NewTokensLive';
 import ChainSelector from '../components/ui/ChainSelector';
 import StatsBar from '../components/ui/StatsBar';
-import FairlaunchBanner from '../components/ui/FairlaunchBanner';
+import PresaleWidget from '../components/ui/PresaleWidget';
 import Image from 'next/image';
 
 export default async function HomePage() {
@@ -53,8 +53,8 @@ export default async function HomePage() {
                 </div>
             </div>
 
-            {/* Animated Fairlaunch Banner */}
-            <FairlaunchBanner />
+            {/* Presale Widget */}
+            <PresaleWidget />
 
             {/* Stats Bar */}
             <StatsBar />
