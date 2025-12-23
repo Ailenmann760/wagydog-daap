@@ -39,9 +39,23 @@ export default function TokenPage() {
         queryKey: ['pool', address, chain],
         queryFn: async () => {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-            // Try getting pool details first
-            const response = await axios.get(`${apiUrl}/api/pairs/${chain}/${address}`);
-            return response.data.data;
+
+            // If chain is unknown or not provided, use the fallback endpoint that tries all chains
+            if (!chain || chain === 'unknown' || chain === 'undefined') {
+                const response = await axios.get(`${apiUrl}/api/pairs/${address}`);
+                return response.data.data;
+            }
+
+            // Try chain-specific endpoint first
+            try {
+                const response = await axios.get(`${apiUrl}/api/pairs/${chain}/${address}`);
+                return response.data.data;
+            } catch (err) {
+                // If chain-specific fails, try the fallback that searches all chains
+                console.log('Chain-specific lookup failed, trying all chains...');
+                const fallbackResponse = await axios.get(`${apiUrl}/api/pairs/${address}`);
+                return fallbackResponse.data.data;
+            }
         },
         enabled: !!address,
         retry: 1,
