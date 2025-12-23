@@ -445,15 +445,23 @@ a {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 80px;
-  padding: 16px 20px;
+  min-width: 60px;
+  padding: 12px 14px;
   background: linear-gradient(135deg,
       rgba(30, 41, 59, 0.9),
       rgba(15, 23, 42, 0.95));
   border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 16px;
+  border-radius: 12px;
   position: relative;
   z-index: 1;
+}
+
+@media (min-width: 640px) {
+  .countdown-unit {
+    min-width: 80px;
+    padding: 16px 20px;
+    border-radius: 16px;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -490,7 +498,7 @@ a {
 }
 
 .countdown-value {
-  font-size: 2.5rem;
+  font-size: 1.75rem;
   font-weight: 800;
   background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
   -webkit-background-clip: text;
@@ -498,6 +506,12 @@ a {
   background-clip: text;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) {
+  .countdown-value {
+    font-size: 2.5rem;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -541,8 +555,8 @@ a {
 .coming-soon-badge {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 32px;
+  justify-content: center;
+  padding: 10px 24px;
   background: linear-gradient(135deg,
       rgba(234, 179, 8, 0.15),
       rgba(249, 115, 22, 0.15));
@@ -551,6 +565,12 @@ a {
   color: #fbbf24;
   position: relative;
   z-index: 1;
+}
+
+@media (min-width: 640px) {
+  .coming-soon-badge {
+    padding: 12px 32px;
+  }
 }
 
 .coming-soon-glow {
