@@ -35,18 +35,12 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-/* Prevent flex/grid items from overflowing - more targeted */
-.flex>*,
-.grid>*,
-[class*="flex-"]>* {
-  min-width: 0;
-}
-
 /* Break long addresses/hashes that have no spaces */
 code,
 .break-all {
   word-break: break-all;
 }
+
 
 a {
   color: inherit;

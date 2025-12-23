@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Heart, Copy, Check, ExternalLink, Wallet, TrendingUp } from 'lucide-react';
-import { useAccount, useConnect, useSendTransaction, useBalance } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useSendTransaction, useBalance } from 'wagmi';
 import { parseEther } from 'viem';
 
 // Donation wallet address (same across all chains)
@@ -53,9 +53,11 @@ export default function DonatePage() {
     const [copied, setCopied] = useState(false);
     const [donateAmount, setDonateAmount] = useState('');
     const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+    const [showWalletModal, setShowWalletModal] = useState(false);
 
     const { address, isConnected } = useAccount();
-    const { connect, connectors } = useConnect();
+    const { connect, connectors, isPending: isConnecting } = useConnect();
+    const { disconnect } = useDisconnect();
     const { sendTransaction, isPending } = useSendTransaction();
     const { data: balance } = useBalance({ address });
 
@@ -67,6 +69,11 @@ export default function DonatePage() {
         } catch (err) {
             console.error('Failed to copy:', err);
         }
+    };
+
+    const handleConnectWallet = (connector: any) => {
+        connect({ connector });
+        setShowWalletModal(false);
     };
 
     const handleDonate = async () => {
@@ -84,6 +91,51 @@ export default function DonatePage() {
             setTxStatus('error');
         }
     };
+
+    // Wallet Modal Component
+    const WalletModal = () => (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowWalletModal(false)}>
+            <div className="bg-slate-900 border border-pink-500/30 rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+                <h3 className="text-2xl font-bold text-white mb-2">Connect Wallet</h3>
+                <p className="text-slate-400 text-sm mb-6">Choose your preferred wallet to donate</p>
+
+                <div className="space-y-3">
+                    {connectors.map((connector) => (
+                        <button
+                            key={connector.uid}
+                            onClick={() => handleConnectWallet(connector)}
+                            disabled={isConnecting}
+                            className="w-full flex items-center gap-4 p-4 bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700 hover:border-pink-500/50 disabled:opacity-50"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
+                                {connector.name === 'MetaMask' && <span className="text-2xl">🦊</span>}
+                                {connector.name === 'WalletConnect' && <span className="text-2xl">🔗</span>}
+                                {connector.name === 'Injected' && <span className="text-2xl">💼</span>}
+                                {!['MetaMask', 'WalletConnect', 'Injected'].includes(connector.name) && <span className="text-2xl">👛</span>}
+                            </div>
+                            <div className="text-left">
+                                <span className="text-white font-semibold block">
+                                    {connector.name === 'Injected' ? 'Browser Wallet' : connector.name}
+                                </span>
+                                <span className="text-slate-400 text-xs">
+                                    {connector.name === 'MetaMask' && 'Popular browser extension'}
+                                    {connector.name === 'WalletConnect' && 'Trust Wallet, Binance & more'}
+                                    {connector.name === 'Injected' && 'Use your browser wallet'}
+                                </span>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+
+                <button
+                    onClick={() => setShowWalletModal(false)}
+                    className="mt-6 w-full py-3 text-slate-400 hover:text-white transition border border-slate-700 rounded-xl hover:border-slate-600"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    );
 
     return (
         <div className="space-y-6 p-4 lg:p-6 max-w-4xl mx-auto">
@@ -169,13 +221,21 @@ export default function DonatePage() {
 
                 {isConnected ? (
                     <div className="space-y-4">
-                        <div className="text-sm text-text-muted">
-                            Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
-                            {balance && (
-                                <span className="ml-2">
-                                    (Balance: {parseFloat(balance.formatted).toFixed(4)} {balance.symbol})
-                                </span>
-                            )}
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm text-text-muted">
+                                Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
+                                {balance && (
+                                    <span className="ml-2">
+                                        (Balance: {parseFloat(balance.formatted).toFixed(4)} {balance.symbol})
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => disconnect()}
+                                className="text-xs text-red-400 hover:text-red-300"
+                            >
+                                Disconnect
+                            </button>
                         </div>
 
                         <div className="flex gap-3">
@@ -207,8 +267,8 @@ export default function DonatePage() {
                     <div className="text-center py-4">
                         <p className="text-text-muted mb-4">Connect your wallet to donate directly</p>
                         <button
-                            onClick={() => connectors[0] && connect({ connector: connectors[0] })}
-                            className="px-6 py-3 bg-primary hover:bg-primary/80 text-white font-bold rounded-xl transition"
+                            onClick={() => setShowWalletModal(true)}
+                            className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold rounded-xl transition"
                         >
                             Connect Wallet
                         </button>
@@ -256,6 +316,9 @@ export default function DonatePage() {
             <div className="text-center text-text-muted text-sm">
                 <p>Every donation, no matter how small, helps keep Wagydog free for everyone. 💖</p>
             </div>
+
+            {/* Wallet Modal */}
+            {showWalletModal && <WalletModal />}
         </div>
     );
 }
